@@ -63,6 +63,7 @@ async function loadProducts() {
       .from('products')
       .select('*')
       .eq('status', 'active')
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
     if (error) throw error;
