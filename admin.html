@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 内购商品展示</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- 登录页面 -->
+  <section id="login-page" class="login-page">
+    <div class="login-box">
+      <h2>管理后台登录</h2>
+      <input type="password" id="login-password" placeholder="请输入管理密码">
+      <button id="login-btn" class="btn btn-primary">登录</button>
+      <div id="login-error" class="message message-error"></div>
+    </div>
+  </section>
+
+  <!-- 管理后台主内容（默认隐藏） -->
+  <div id="admin-content" class="admin-content container hidden">
+
+    <!-- 页面头部 -->
+    <header class="page-header">
+      <div class="container">
+        <h1>商品管理后台</h1>
+      </div>
+    </header>
+
+    <!-- 添加新商品 -->
+    <section class="admin-section">
+      <h2>添加新商品</h2>
+
+      <!-- 成功/错误提示 -->
+      <div id="form-message" class="message"></div>
+
+      <form class="product-form" onsubmit="return false;">
+        <!-- 左侧：图片上传区域 -->
+        <div class="form-image-upload">
+          <div class="image-upload-area" id="upload-area">
+            <span class="upload-icon">📷</span>
+            <span class="upload-text">点击上传图片</span>
+            <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp">
+          </div>
+          <img id="image-preview" src="" alt="图片预览" hidden>
+          <span class="field-error" id="image-error"></span>
+        </div>
+
+        <!-- 右侧：表单字段 -->
+        <div class="form-fields">
+          <!-- 第一行：商品名称 + 价格 -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>商品名称<span class="required">*</span></label>
+              <input type="text" id="product-name" placeholder="请输入商品名称">
+              <span class="field-error"></span>
+            </div>
+            <div class="form-group">
+              <label>价格(元)<span class="required">*</span></label>
+              <input type="number" id="product-price" step="0.01" placeholder="0.00">
+              <span class="field-error"></span>
+            </div>
+          </div>
+
+          <!-- 第二行：货号 + 数量 -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>货号</label>
+              <input type="text" id="product-sku" placeholder="请输入货号">
+              <span class="field-error"></span>
+            </div>
+            <div class="form-group">
+              <label>数量</label>
+              <input type="number" id="product-quantity" placeholder="0">
+              <span class="field-error"></span>
+            </div>
+          </div>
+
+          <!-- 第三行：SKU -->
+          <div class="form-group">
+            <label>SKU</label>
+            <input type="text" id="product-product-sku" placeholder="请输入SKU">
+            <span class="field-error"></span>
+          </div>
+
+          <!-- 第四行：备注 -->
+          <div class="form-group">
+            <label>备注</label>
+            <textarea id="product-remark" placeholder="请输入备注信息"></textarea>
+            <span class="field-error"></span>
+          </div>
+        </div>
+      </form>
+
+      <!-- 提交按钮 -->
+      <div class="form-actions">
+        <button id="submit-btn" class="btn btn-primary">添加商品</button>
+      </div>
+      <input type="hidden" id="edit-id">
+    </section>
+
+    <!-- 商品列表 -->
+    <section class="admin-section">
+      <h2>商品列表</h2>
+
+      <!-- 筛选标签 -->
+      <div class="filter-tabs">
+        <span class="filter-tab active" data-filter="all">全部</span>
+        <span class="filter-tab" data-filter="active">在售</span>
+        <span class="filter-tab" data-filter="inactive">已下架</span>
+      </div>
+
+      <!-- 商品表格 -->
+      <div class="product-table-wrapper">
+        <table class="product-table" id="product-table">
+          <thead>
+            <tr>
+              <th>图片</th>
+              <th>商品名称</th>
+              <th>价格</th>
+              <th>库存</th>
+              <th>SKU</th>
+              <th>货号</th>
+              <th>备注</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="product-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- 空状态 -->
+      <div id="admin-empty" class="empty-state hidden">暂无商品</div>
+    </section>
+
+    <!-- 购买记录 -->
+    <section class="admin-section">
+      <h2>购买记录 <button class="btn btn-default btn-sm" style="float:right;margin-top:-4px" onclick="exportOrders()">导出 Excel</button></h2>
+      <div class="product-table-wrapper">
+        <table class="product-table" id="order-table">
+          <thead>
+            <tr>
+              <th>商品名称</th>
+              <th>购买人</th>
+              <th>数量</th>
+              <th>IP地址</th>
+              <th>购买时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="order-tbody"></tbody>
+        </table>
+      </div>
+      <div id="order-empty" class="empty-state hidden">暂无购买记录</div>
+      <div id="order-pagination" class="pagination hidden">
+        <button class="btn btn-default btn-sm" id="order-prev-btn" onclick="changeOrderPage(-1)">上一页</button>
+        <span id="order-page-info"></span>
+        <button class="btn btn-default btn-sm" id="order-next-btn" onclick="changeOrderPage(1)">下一页</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    if (!CONFIG.DEMO_MODE) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
+    }
+  </script>
+  <script src="js/supabase.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
