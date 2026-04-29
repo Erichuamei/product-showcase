@@ -367,7 +367,8 @@ async function addProduct() {
         product_sku: productSku,
         remark: remark,
         image_url: filename,
-        status: 'active'
+        status: 'active',
+        sort_order: 9999
       });
 
     if (insertResult.error) {
@@ -398,6 +399,8 @@ async function addProduct() {
 
 // 当前筛选条件（默认 'all'）
 var currentFilter = 'all';
+// 当前商品列表（用于上移/下移交换排序值）
+var currentProductList = [];
 
 // 编辑模式下保存的原始图片 URL
 var currentEditImageUrl = '';
@@ -431,7 +434,11 @@ async function loadProductList(filter) {
   var table = document.getElementById('product-table');
 
   try {
-    var query = supabaseClient.from('products').select('*').order('created_at', { ascending: false });
+    var query = supabaseClient
+      .from('products')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
 
     if (filter === 'active' || filter === 'inactive') {
       query = query.eq('status', filter);
@@ -441,6 +448,7 @@ async function loadProductList(filter) {
     if (result.error) throw result.error;
 
     var data = result.data;
+    currentProductList = data || [];
 
     if (!data || data.length === 0) {
       tbody.innerHTML = '';
@@ -467,12 +475,15 @@ async function loadProductList(filter) {
         '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '"></td>' +
         '<td>' + product.name + '</td>' +
         '<td>' + price + '</td>' +
+        '<td>' + (product.sort_order == null ? 9999 : product.sort_order) + '</td>' +
         '<td>' + qty + '</td>' +
         '<td>' + productSku + '</td>' +
         '<td>' + sku + '</td>' +
         '<td><span class="cell-truncate" data-tip="' + (product.remark || '').replace(/"/g, '&quot;') + '">' + (product.remark || '-') + '</span></td>' +
         '<td><span class="' + statusClass + '">' + statusText + '</span></td>' +
         '<td>' +
+          '<button class="btn-link" onclick="moveProductUp(\'' + product.id + '\')">上移</button>' +
+          '<button class="btn-link" onclick="moveProductDown(\'' + product.id + '\')">下移</button>' +
           '<button class="btn-link" onclick=\'startEdit(' + JSON.stringify(product).replace(/'/g, "&#39;") + ')\'>编辑</button>' +
           '<button class="btn-link" onclick="toggleProductStatus(\'' + product.id + '\', \'' + toggleStatus + '\')">' + toggleLabel + '</button>' +
           '<button class="btn-link danger" onclick="deleteProduct(\'' + product.id + '\', \'' + product.image_url + '\')">删除</button>' +
@@ -674,6 +685,70 @@ async function toggleProductStatus(id, newStatus) {
 
   } catch (err) {
     alert('操作失败，请重试');
+  }
+}
+
+/**
+ * 商品上移：与上一条交换 sort_order
+ * @param {string} productId - 商品 ID
+ */
+async function moveProductUp(productId) {
+  var idx = currentProductList.findIndex(function (p) { return p.id === productId; });
+  if (idx <= 0) return;
+
+  var current = currentProductList[idx];
+  var prev = currentProductList[idx - 1];
+  var currentOrder = current.sort_order == null ? 9999 : current.sort_order;
+  var prevOrder = prev.sort_order == null ? 9999 : prev.sort_order;
+
+  try {
+    var r1 = await supabaseClient
+      .from('products')
+      .update({ sort_order: prevOrder, updated_at: new Date().toISOString() })
+      .eq('id', current.id);
+    if (r1.error) throw r1.error;
+
+    var r2 = await supabaseClient
+      .from('products')
+      .update({ sort_order: currentOrder, updated_at: new Date().toISOString() })
+      .eq('id', prev.id);
+    if (r2.error) throw r2.error;
+
+    loadProductList(currentFilter);
+  } catch (err) {
+    alert('上移失败，请重试');
+  }
+}
+
+/**
+ * 商品下移：与下一条交换 sort_order
+ * @param {string} productId - 商品 ID
+ */
+async function moveProductDown(productId) {
+  var idx = currentProductList.findIndex(function (p) { return p.id === productId; });
+  if (idx < 0 || idx >= currentProductList.length - 1) return;
+
+  var current = currentProductList[idx];
+  var next = currentProductList[idx + 1];
+  var currentOrder = current.sort_order == null ? 9999 : current.sort_order;
+  var nextOrder = next.sort_order == null ? 9999 : next.sort_order;
+
+  try {
+    var r1 = await supabaseClient
+      .from('products')
+      .update({ sort_order: nextOrder, updated_at: new Date().toISOString() })
+      .eq('id', current.id);
+    if (r1.error) throw r1.error;
+
+    var r2 = await supabaseClient
+      .from('products')
+      .update({ sort_order: currentOrder, updated_at: new Date().toISOString() })
+      .eq('id', next.id);
+    if (r2.error) throw r2.error;
+
+    loadProductList(currentFilter);
+  } catch (err) {
+    alert('下移失败，请重试');
   }
 }
 
