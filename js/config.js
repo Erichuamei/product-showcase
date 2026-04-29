@@ -5,10 +5,10 @@ const CONFIG = {
   DEMO_MODE: false,
 
   // Supabase 项目 URL
-  SUPABASE_URL: 'https://qvaepodstqaakwtggylz.supabase.co',
+  SUPABASE_URL: 'https://ewqbivlejsneqqcsugep.supabase.co',
 
   // Supabase 匿名公钥
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2YWVwb2RzdHFhYWt3dGdneWx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MzI3MjEsImV4cCI6MjA5MjUwODcyMX0.xr_HwrqbOKlBgA66mThLEcZvjKbXESxVLa4Fv6F0qg4',
+  SUPABASE_ANON_KEY: 'sb_publishable_3foGsMm4yLp5hyeauCW6Pw_s4m0MKkf',
 
   // Supabase Storage 存储桶名称
   STORAGE_BUCKET: 'product-images',
