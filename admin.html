@@ -63,7 +63,7 @@
             </div>
           </div>
 
-          <!-- 第二行：货号 + 数量 -->
+          <!-- 第二行：货号 + 数量 + 排序 -->
           <div class="form-row">
             <div class="form-group">
               <label>货号</label>
@@ -73,6 +73,11 @@
             <div class="form-group">
               <label>数量</label>
               <input type="number" id="product-quantity" placeholder="0">
+              <span class="field-error"></span>
+            </div>
+            <div class="form-group">
+              <label>排序序号</label>
+              <input type="number" id="product-sort-order" min="1" step="1" placeholder="留空默认9999">
               <span class="field-error"></span>
             </div>
           </div>
