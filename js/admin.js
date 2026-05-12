@@ -255,6 +255,20 @@ function validateForm() {
     isValid = false;
   }
 
+  // 校验排序序号（可选填；填了必须是正整数）
+  var sortOrderInput = document.getElementById('product-sort-order');
+  var sortOrderValue = sortOrderInput.value.trim();
+  if (sortOrderValue) {
+    var sortOrder = parseInt(sortOrderValue, 10);
+    if (!/^\d+$/.test(sortOrderValue) || isNaN(sortOrder) || sortOrder <= 0) {
+      sortOrderInput.classList.add('input-error');
+      var sortOrderError = sortOrderInput.parentElement.querySelector('.field-error');
+      sortOrderError.textContent = '请输入大于 0 的整数';
+      sortOrderError.classList.add('visible');
+      isValid = false;
+    }
+  }
+
   return isValid;
 }
 
@@ -267,6 +281,7 @@ function resetForm() {
   document.getElementById('product-price').value = '';
   document.getElementById('product-sku').value = '';
   document.getElementById('product-quantity').value = '';
+  document.getElementById('product-sort-order').value = '';
   document.getElementById('product-product-sku').value = '';
   document.getElementById('product-remark').value = '';
 
@@ -330,6 +345,8 @@ async function addProduct() {
   var price = parseFloat(document.getElementById('product-price').value);
   var sku = document.getElementById('product-sku').value.trim();
   var quantity = document.getElementById('product-quantity').value ? parseInt(document.getElementById('product-quantity').value) : 0;
+  var sortOrderInput = document.getElementById('product-sort-order').value.trim();
+  var sortOrder = sortOrderInput ? parseInt(sortOrderInput, 10) : 9999;
   var productSku = document.getElementById('product-product-sku').value.trim();
   var remark = document.getElementById('product-remark').value.trim();
 
@@ -368,7 +385,7 @@ async function addProduct() {
         remark: remark,
         image_url: filename,
         status: 'active',
-        sort_order: 9999
+        sort_order: sortOrder
       });
 
     if (insertResult.error) {
@@ -508,6 +525,7 @@ function startEdit(product) {
   document.getElementById('product-price').value = product.price || '';
   document.getElementById('product-sku').value = product.sku || '';
   document.getElementById('product-quantity').value = product.quantity != null ? product.quantity : '';
+  document.getElementById('product-sort-order').value = product.sort_order != null ? product.sort_order : '';
   document.getElementById('product-product-sku').value = product.product_sku || '';
   document.getElementById('product-remark').value = product.remark || '';
 
@@ -563,6 +581,8 @@ async function editProduct() {
   var price = parseFloat(document.getElementById('product-price').value);
   var sku = document.getElementById('product-sku').value.trim();
   var quantity = document.getElementById('product-quantity').value ? parseInt(document.getElementById('product-quantity').value) : 0;
+  var sortOrderInput = document.getElementById('product-sort-order').value.trim();
+  var sortOrder = sortOrderInput ? parseInt(sortOrderInput, 10) : 9999;
   var productSku = document.getElementById('product-product-sku').value.trim();
   var remark = document.getElementById('product-remark').value.trim();
 
@@ -599,6 +619,7 @@ async function editProduct() {
         price: price,
         sku: sku,
         quantity: quantity,
+        sort_order: sortOrder,
         product_sku: productSku,
         remark: remark,
         image_url: imageUrl,
