@@ -337,6 +337,9 @@ async function addProduct() {
 
   // 表单验证
   if (!validateForm()) {
+    formMessage.textContent = '请检查表单中标红的项（排序序号须为正整数，或留空表示默认 9999）';
+    formMessage.classList.add('message-error');
+    formMessage.classList.add('visible');
     return;
   }
 
@@ -346,7 +349,7 @@ async function addProduct() {
   var sku = document.getElementById('product-sku').value.trim();
   var quantity = document.getElementById('product-quantity').value ? parseInt(document.getElementById('product-quantity').value) : 0;
   var sortOrderInput = document.getElementById('product-sort-order').value.trim();
-  var sortOrder = sortOrderInput ? parseInt(sortOrderInput, 10) : 9999;
+  var sortOrder = sortOrderInput !== '' ? parseInt(sortOrderInput, 10) : 9999;
   var productSku = document.getElementById('product-product-sku').value.trim();
   var remark = document.getElementById('product-remark').value.trim();
 
@@ -573,6 +576,9 @@ async function editProduct() {
 
   // 表单验证
   if (!validateForm()) {
+    formMessage.textContent = '请检查表单中标红的项（排序序号须为 1、2、3 这样的正整数，或留空表示默认 9999）';
+    formMessage.classList.add('message-error');
+    formMessage.classList.add('visible');
     return;
   }
 
@@ -582,7 +588,7 @@ async function editProduct() {
   var sku = document.getElementById('product-sku').value.trim();
   var quantity = document.getElementById('product-quantity').value ? parseInt(document.getElementById('product-quantity').value) : 0;
   var sortOrderInput = document.getElementById('product-sort-order').value.trim();
-  var sortOrder = sortOrderInput ? parseInt(sortOrderInput, 10) : 9999;
+  var sortOrder = sortOrderInput !== '' ? parseInt(sortOrderInput, 10) : 9999;
   var productSku = document.getElementById('product-product-sku').value.trim();
   var remark = document.getElementById('product-remark').value.trim();
 
@@ -611,7 +617,7 @@ async function editProduct() {
       imageUrl = filename;
     }
 
-    // 更新商品记录
+    // 更新商品记录（select 用于确认 sort_order 已写入；缺列或权限问题会在这里报错）
     var updateResult = await supabaseClient
       .from('products')
       .update({
@@ -625,24 +631,37 @@ async function editProduct() {
         image_url: imageUrl,
         updated_at: new Date().toISOString()
       })
-      .eq('id', editId);
+      .eq('id', editId)
+      .select('id, sort_order')
+      .maybeSingle();
 
     if (updateResult.error) {
-      formMessage.textContent = '修改失败，请重试';
+      formMessage.textContent = '修改失败：' + (updateResult.error.message || '请检查 Supabase 是否已有 sort_order 字段');
       formMessage.classList.add('message-error');
+      formMessage.classList.add('visible');
+      submitBtn.disabled = false;
+      return;
+    }
+
+    if (!updateResult.data) {
+      formMessage.textContent = '未更新任何记录，请刷新页面后重试';
+      formMessage.classList.add('message-error');
+      formMessage.classList.add('visible');
       submitBtn.disabled = false;
       return;
     }
 
     // 修改成功
-    formMessage.textContent = '修改成功';
+    formMessage.textContent = '修改成功（排序序号：' + (updateResult.data.sort_order != null ? updateResult.data.sort_order : '—') + '）';
     formMessage.classList.add('message-success');
+    formMessage.classList.add('visible');
     resetForm();
     loadProductList(currentFilter);
 
   } catch (err) {
-    formMessage.textContent = '修改失败，请重试';
+    formMessage.textContent = '修改失败：' + (err && err.message ? err.message : '请重试');
     formMessage.classList.add('message-error');
+    formMessage.classList.add('visible');
   }
 
   submitBtn.disabled = false;
