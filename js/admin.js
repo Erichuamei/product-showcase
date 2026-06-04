@@ -815,6 +815,7 @@ function formatDateTime(isoString) {
 var allOrders = [];
 var orderPage = 1;
 var orderPageSize = 50;
+var selectedOrderIds = new Set();
 
 /**
  * 加载购买记录列表并渲染到表格（带分页）
@@ -843,6 +844,9 @@ async function loadOrderList() {
       if (result.error) throw result.error;
       allOrders = result.data || [];
     }
+
+    selectedOrderIds.clear();
+    updateOrderBatchToolbar();
 
     if (allOrders.length === 0) {
       tbody.innerHTML = '';
@@ -881,7 +885,10 @@ function renderOrderPage() {
   var pageOrders = allOrders.slice(start, end);
 
   tbody.innerHTML = pageOrders.map(function (order) {
+    var checked = selectedOrderIds.has(order.id) ? ' checked' : '';
     return '<tr>' +
+      '<td class="col-checkbox"><input type="checkbox" class="order-row-select" data-id="' + order.id + '"' + checked +
+        ' onchange="toggleOrderSelect(\'' + order.id + '\', this.checked)"></td>' +
       '<td>' + order.product_name + '</td>' +
       '<td>' + order.buyer_name + '</td>' +
       '<td>' + order.quantity + '</td>' +
@@ -890,6 +897,9 @@ function renderOrderPage() {
       '<td><button class="btn-link danger" onclick="deleteOrder(\'' + order.id + '\')">删除</button></td>' +
       '</tr>';
   }).join('');
+
+  updateOrderSelectAllCheckbox();
+  updateOrderBatchToolbar();
 
   if (totalPages > 1) {
     pagination.classList.remove('hidden');
@@ -914,64 +924,194 @@ function changeOrderPage(delta) {
 }
 
 // ============================================================
+// 购买记录 — 批量勾选
+// ============================================================
+
+/**
+ * 切换单条购买记录的选中状态
+ */
+function toggleOrderSelect(orderId, checked) {
+  if (checked) {
+    selectedOrderIds.add(orderId);
+  } else {
+    selectedOrderIds.delete(orderId);
+  }
+  updateOrderSelectAllCheckbox();
+  updateOrderBatchToolbar();
+}
+
+/**
+ * 全选 / 取消全选当前页
+ */
+function toggleSelectAllOrdersOnPage(checked) {
+  var totalPages = Math.ceil(allOrders.length / orderPageSize);
+  var start = (orderPage - 1) * orderPageSize;
+  var end = start + orderPageSize;
+  var pageOrders = allOrders.slice(start, end);
+
+  pageOrders.forEach(function (order) {
+    if (checked) {
+      selectedOrderIds.add(order.id);
+    } else {
+      selectedOrderIds.delete(order.id);
+    }
+  });
+
+  var checkboxes = document.querySelectorAll('.order-row-select');
+  for (var i = 0; i < checkboxes.length; i++) {
+    checkboxes[i].checked = checked;
+  }
+
+  updateOrderSelectAllCheckbox();
+  updateOrderBatchToolbar();
+}
+
+/**
+ * 同步表头「全选本页」复选框状态
+ */
+function updateOrderSelectAllCheckbox() {
+  var selectAll = document.getElementById('order-select-all');
+  if (!selectAll) return;
+
+  var totalPages = Math.ceil(allOrders.length / orderPageSize);
+  var start = (orderPage - 1) * orderPageSize;
+  var end = start + orderPageSize;
+  var pageOrders = allOrders.slice(start, end);
+
+  if (pageOrders.length === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    return;
+  }
+
+  var selectedOnPage = pageOrders.filter(function (o) {
+    return selectedOrderIds.has(o.id);
+  }).length;
+
+  selectAll.checked = selectedOnPage === pageOrders.length;
+  selectAll.indeterminate = selectedOnPage > 0 && selectedOnPage < pageOrders.length;
+}
+
+/**
+ * 更新批量操作工具栏（已选数量、按钮可用状态）
+ */
+function updateOrderBatchToolbar() {
+  var countEl = document.getElementById('order-selected-count');
+  var exportBtn = document.getElementById('order-export-selected-btn');
+  var deleteBtn = document.getElementById('order-delete-selected-btn');
+  var count = selectedOrderIds.size;
+
+  if (countEl) {
+    countEl.textContent = '已选 ' + count + ' 条';
+  }
+  if (exportBtn) {
+    exportBtn.disabled = count === 0;
+  }
+  if (deleteBtn) {
+    deleteBtn.disabled = count === 0;
+  }
+}
+
+/**
+ * 获取已勾选的购买记录（保持列表原有排序）
+ */
+function getSelectedOrders() {
+  return allOrders.filter(function (order) {
+    return selectedOrderIds.has(order.id);
+  });
+}
+
+/**
+ * 将购买记录列表导出为 CSV 并下载
+ * @param {Array} orders - 要导出的记录
+ * @param {string} filenameSuffix - 文件名后缀，如「选中」或空
+ */
+function downloadOrdersCsv(orders, filenameSuffix) {
+  var bom = '\uFEFF';
+  var header = '商品名称,购买人,数量,IP地址,购买时间\n';
+  var rows = orders.map(function (order) {
+    return '"' + (order.product_name || '') + '",' +
+           '"' + (order.buyer_name || '') + '",' +
+           order.quantity + ',' +
+           '"' + (order.buyer_ip || '') + '",' +
+           '"' + formatDateTime(order.created_at) + '"';
+  }).join('\n');
+
+  var csv = bom + header + rows;
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  var suffix = filenameSuffix ? '_' + filenameSuffix : '';
+  a.download = '购买记录' + suffix + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
 // 导出购买记录为 Excel（CSV 格式）
 // ============================================================
 
 /**
- * 导出购买记录为 CSV 文件
+ * 导出全部购买记录
  */
 async function exportOrders() {
   try {
-    var orders = [];
-
-    if (CONFIG.DEMO_MODE) {
-      try {
-        orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
-      } catch (e) {
-        orders = [];
-      }
-      orders.sort(function (a, b) {
-        return a.created_at < b.created_at ? 1 : -1;
-      });
-    } else {
-      var result = await supabaseClient
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (result.error) throw result.error;
-      orders = result.data || [];
-    }
-
-    if (orders.length === 0) {
+    if (allOrders.length === 0) {
       alert('暂无购买记录可导出');
       return;
     }
-
-    // 构建 CSV 内容（带 BOM 头，确保 Excel 正确识别中文）
-    var bom = '\uFEFF';
-    var header = '商品名称,购买人,数量,IP地址,购买时间\n';
-    var rows = orders.map(function (order) {
-      return '"' + (order.product_name || '') + '",' +
-             '"' + (order.buyer_name || '') + '",' +
-             order.quantity + ',' +
-             '"' + (order.buyer_ip || '') + '",' +
-             '"' + formatDateTime(order.created_at) + '"';
-    }).join('\n');
-
-    var csv = bom + header + rows;
-
-    // 创建下载链接
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = '购买记录_' + new Date().toISOString().slice(0, 10) + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadOrdersCsv(allOrders, '');
   } catch (err) {
     alert('导出失败，请重试');
+  }
+}
+
+/**
+ * 导出已勾选的购买记录
+ */
+function exportSelectedOrders() {
+  var orders = getSelectedOrders();
+  if (orders.length === 0) {
+    alert('请先勾选要导出的购买记录');
+    return;
+  }
+  downloadOrdersCsv(orders, '选中');
+}
+
+/**
+ * 批量删除已勾选的购买记录
+ */
+async function deleteSelectedOrders() {
+  var ids = Array.from(selectedOrderIds);
+  if (ids.length === 0) {
+    alert('请先勾选要删除的购买记录');
+    return;
+  }
+  if (!confirm('确定要删除已选中的 ' + ids.length + ' 条购买记录吗？此操作不可恢复。')) {
+    return;
+  }
+
+  try {
+    if (CONFIG.DEMO_MODE) {
+      var orders = JSON.parse(localStorage.getItem('demo_orders') || '[]');
+      orders = orders.filter(function (o) {
+        return ids.indexOf(o.id) === -1;
+      });
+      localStorage.setItem('demo_orders', JSON.stringify(orders));
+    } else {
+      var result = await supabaseClient.from('orders').delete().in('id', ids);
+      if (result.error) {
+        alert('批量删除失败，请重试');
+        return;
+      }
+    }
+    selectedOrderIds.clear();
+    loadOrderList();
+  } catch (err) {
+    alert('批量删除失败，请重试');
   }
 }
 

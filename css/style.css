@@ -873,6 +873,39 @@ select {
 }
 
 /* ---------- 分页 ---------- */
+/* 购买记录 — 批量操作栏 */
+.order-batch-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.order-selected-count {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  min-width: 72px;
+}
+
+.order-export-all-btn {
+  margin-left: auto;
+}
+
+.product-table .col-checkbox {
+  width: 40px;
+  text-align: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.product-table .col-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
 .pagination {
   display: flex;
   align-items: center;

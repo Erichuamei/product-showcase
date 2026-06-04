@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 内购商品展示</title>
-  <link rel="stylesheet" href="css/style.css?v=20260604c">
+  <link rel="stylesheet" href="css/style.css?v=20260604d">
 </head>
 <body>
 
@@ -143,11 +143,20 @@
 
     <!-- 购买记录 -->
     <section class="admin-section">
-      <h2>购买记录 <button class="btn btn-default btn-sm" style="float:right;margin-top:-4px" onclick="exportOrders()">导出 Excel</button></h2>
+      <h2>购买记录</h2>
+      <div class="order-batch-bar">
+        <span id="order-selected-count" class="order-selected-count">已选 0 条</span>
+        <button type="button" class="btn btn-default btn-sm" id="order-export-selected-btn" onclick="exportSelectedOrders()" disabled>批量导出</button>
+        <button type="button" class="btn btn-danger btn-sm" id="order-delete-selected-btn" onclick="deleteSelectedOrders()" disabled>批量删除</button>
+        <button type="button" class="btn btn-default btn-sm order-export-all-btn" onclick="exportOrders()">导出全部</button>
+      </div>
       <div class="product-table-wrapper">
         <table class="product-table" id="order-table">
           <thead>
             <tr>
+              <th class="col-checkbox">
+                <input type="checkbox" id="order-select-all" title="全选本页" onchange="toggleSelectAllOrdersOnPage(this.checked)">
+              </th>
               <th>商品名称</th>
               <th>购买人</th>
               <th>数量</th>
@@ -169,9 +178,9 @@
 
   </div>
 
-  <script src="js/config.js?v=20260604c"></script>
+  <script src="js/config.js?v=20260604d"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260604c"></script>
-  <script src="js/admin.js?v=20260604c"></script>
+  <script src="js/supabase.js?v=20260604d"></script>
+  <script src="js/admin.js?v=20260604d"></script>
 </body>
 </html>
