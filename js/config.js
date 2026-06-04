@@ -1,5 +1,8 @@
 // 配置模块 — 集中管理所有配置项
 const CONFIG = {
+  // 静态资源版本号（更新 CSS/JS 后递增，避免浏览器缓存旧文件）
+  ASSET_VERSION: '20260604b',
+
   // ★ 本地测试模式：设为 true 时使用 localStorage 模拟数据库，无需 Supabase
   // ★ 正式部署时改为 false，并填写下方 Supabase 配置
   DEMO_MODE: false,
