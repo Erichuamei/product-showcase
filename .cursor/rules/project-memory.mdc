@@ -1,0 +1,45 @@
+---
+description: 内购商品展示平台 — 项目记忆、工作流与协作约定
+alwaysApply: true
+---
+
+# 内购商品展示平台 — AI 协作规则
+
+完整细节见项目根目录 `PROJECT_MEMORY.md`。以下为必须遵守的要点。
+
+## 项目
+
+- 静态 HTML/JS 内购展示站 + Supabase（`ewqbivlejsneqqcsugep`）
+- 本地路径：`C:\Users\Administrator\Desktop\内购新`
+- GitHub：https://github.com/Erichuamei/product-showcase（`git push` → Vercel 自动部署）
+- 页面：`index.html`（展示+购买）、`admin.html`（管理后台）
+- 核心 JS：`config.js`、`supabase.js`、`app.js`、`admin.js`
+
+## 用户期望的工作流（强制）
+
+1. **先改本地文件**
+2. **本地测试**（`DEMO_MODE` 或 `npx serve . -p 3000`）
+3. **用户明确说「可以上传/发布/push」后**，才执行 `git push` 和/或 `supabase db push`
+
+**禁止**未经确认自动 push 到 GitHub 或 Supabase。
+
+## 本地测试
+
+- UI 快测：`config.js` 中 `DEMO_MODE: true`
+- 真实库：`DEMO_MODE: false` + `npx --yes serve . -p 3000`
+- **无 Docker**：可用 `db query --linked`、`db push`；不要用 `supabase start` / `db pull`
+
+## 数据库变更
+
+- 写 `supabase/migrations/时间戳_描述.sql`
+- 确认后：`npx supabase db push --yes`（Token 用环境变量 `SUPABASE_ACCESS_TOKEN`，勿写入仓库或聊天）
+- 表：`products`（含 sort_order）、`orders`；RPC：`purchase_product`；Storage：`product-images`
+
+## 代码原则
+
+- 最小改动、匹配现有原生 JS 风格
+- 配置只改 `config.js`
+- 简体中文回复
+- 勿提交密钥；勿在回复中复述完整 Token
+
+收到新需求时，先判断：前端 / 库结构 / 仅数据，再按上述流程执行。

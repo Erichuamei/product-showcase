@@ -1,0 +1,9 @@
+# Supabase CLI 本地缓存（含连接信息，勿提交）
+supabase/.temp/
+
+# 环境变量与密钥
+.env
+.env.local
+*.local
+new token.txt
+*token*.txt

@@ -399,6 +399,79 @@ select {
   padding-top: 8px;
 }
 
+/* 添加新商品 — 紧凑布局（仅作用于本区块） */
+.add-product-section {
+  padding: 16px 20px;
+}
+
+.add-product-section h2 {
+  font-size: 15px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+}
+
+.add-product-section .product-form {
+  gap: 16px;
+}
+
+.add-product-section .form-image-upload {
+  flex: 0 0 160px;
+}
+
+.add-product-section .image-upload-area {
+  width: 160px;
+  height: 160px;
+}
+
+.add-product-section .image-upload-area .upload-icon {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.add-product-section .image-upload-area .upload-text {
+  font-size: 12px;
+}
+
+.add-product-section #image-preview {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.add-product-section .form-fields {
+  gap: 12px;
+  min-width: 240px;
+}
+
+.add-product-section .form-row {
+  gap: 12px;
+}
+
+.add-product-section .form-group label {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.add-product-section .form-group input,
+.add-product-section .form-group textarea {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.add-product-section .form-group textarea {
+  min-height: 48px;
+}
+
+.add-product-section .form-actions {
+  padding-top: 4px;
+}
+
+.add-product-section .form-actions .btn {
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
 /* ============================================
    筛选标签
    ============================================ */
@@ -640,6 +713,12 @@ select {
   .product-form {
     flex-direction: column;
     align-items: center;
+  }
+
+  .add-product-section .image-upload-area,
+  .add-product-section #image-preview {
+    width: 140px;
+    height: 140px;
   }
 
   .form-image-upload {

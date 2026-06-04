@@ -814,7 +814,7 @@ function formatDateTime(isoString) {
 // 分页相关变量
 var allOrders = [];
 var orderPage = 1;
-var orderPageSize = 20;
+var orderPageSize = 50;
 
 /**
  * 加载购买记录列表并渲染到表格（带分页）
