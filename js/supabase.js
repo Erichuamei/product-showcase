@@ -202,6 +202,7 @@ if (CONFIG.DEMO_MODE) {
           product_name: product.name,
           buyer_name: buyerName,
           buyer_ip: params.p_buyer_ip || '',
+          buyer_remark: params.p_buyer_remark || '',
           quantity: qty,
           created_at: new Date().toISOString()
         };

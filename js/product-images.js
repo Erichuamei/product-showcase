@@ -33,3 +33,10 @@ function getProductCoverPath(product) {
   var paths = getProductImagePaths(product);
   return paths.length > 0 ? paths[0] : '';
 }
+
+/**
+ * 是否标记为现货
+ */
+function isProductInStock(product) {
+  return !!(product && (product.in_stock === true || product.in_stock === 'true'));
+}

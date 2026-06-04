@@ -352,6 +352,8 @@ function resetForm() {
   document.getElementById('product-sort-order').value = '';
   document.getElementById('product-product-sku').value = '';
   document.getElementById('product-remark').value = '';
+  var inStockInput = document.getElementById('product-in-stock');
+  if (inStockInput) inStockInput.checked = false;
 
   selectedImageFiles = [];
   currentEditImagePaths = [];
@@ -409,6 +411,7 @@ async function addProduct() {
   var sortOrder = sortOrderInput !== '' ? parseInt(sortOrderInput, 10) : 9999;
   var productSku = document.getElementById('product-product-sku').value.trim();
   var remark = document.getElementById('product-remark').value.trim();
+  var inStock = document.getElementById('product-in-stock').checked;
 
   // 禁用提交按钮
   submitBtn.disabled = true;
@@ -429,7 +432,8 @@ async function addProduct() {
         image_url: imagePaths[0],
         image_urls: imagePaths,
         status: 'active',
-        sort_order: sortOrder
+        sort_order: sortOrder,
+        in_stock: inStock
       });
 
     if (insertResult.error) {
@@ -531,6 +535,9 @@ async function loadProductList(filter) {
       var statusClass = 'status-badge ' + product.status;
       var toggleLabel = product.status === 'active' ? '下架' : '上架';
       var toggleStatus = product.status === 'active' ? 'inactive' : 'active';
+      var stockCell = isProductInStock(product)
+        ? '<span class="stock-badge stock-badge--yes">有现货</span>'
+        : '<span class="stock-badge stock-badge--no">无</span>';
 
       return '<tr>' +
         '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '">' + imageCountLabel + '</td>' +
@@ -541,6 +548,7 @@ async function loadProductList(filter) {
         '<td>' + productSku + '</td>' +
         '<td>' + sku + '</td>' +
         '<td><span class="cell-truncate" data-tip="' + (product.remark || '').replace(/"/g, '&quot;') + '">' + (product.remark || '-') + '</span></td>' +
+        '<td>' + stockCell + '</td>' +
         '<td><span class="' + statusClass + '">' + statusText + '</span></td>' +
         '<td>' +
           '<button class="btn-link" onclick="moveProductUp(\'' + product.id + '\')">上移</button>' +
@@ -572,6 +580,8 @@ function startEdit(product) {
   document.getElementById('product-sort-order').value = product.sort_order != null ? product.sort_order : '';
   document.getElementById('product-product-sku').value = product.product_sku || '';
   document.getElementById('product-remark').value = product.remark || '';
+  var inStockInput = document.getElementById('product-in-stock');
+  if (inStockInput) inStockInput.checked = isProductInStock(product);
 
   // 设置编辑 ID
   document.getElementById('edit-id').value = product.id;
@@ -621,6 +631,7 @@ async function editProduct() {
   var sortOrder = sortOrderInput !== '' ? parseInt(sortOrderInput, 10) : 9999;
   var productSku = document.getElementById('product-product-sku').value.trim();
   var remark = document.getElementById('product-remark').value.trim();
+  var inStock = document.getElementById('product-in-stock').checked;
 
   submitBtn.disabled = true;
 
@@ -652,6 +663,7 @@ async function editProduct() {
         remark: remark,
         image_url: imagePaths[0],
         image_urls: imagePaths,
+        in_stock: inStock,
         updated_at: new Date().toISOString()
       })
       .eq('id', editId)
@@ -922,6 +934,7 @@ function renderOrderPage() {
         ' onchange="toggleOrderSelect(\'' + order.id + '\', this.checked)"></td>' +
       '<td>' + order.product_name + '</td>' +
       '<td>' + order.buyer_name + '</td>' +
+      '<td>' + (order.buyer_remark ? String(order.buyer_remark).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '-') + '</td>' +
       '<td>' + order.quantity + '</td>' +
       '<td>' + (order.buyer_ip || '-') + '</td>' +
       '<td>' + formatDateTime(order.created_at) + '</td>' +
@@ -1059,10 +1072,11 @@ function getSelectedOrders() {
  */
 function downloadOrdersCsv(orders, filenameSuffix) {
   var bom = '\uFEFF';
-  var header = '商品名称,购买人,数量,IP地址,购买时间\n';
+  var header = '商品名称,购买人,用户备注,数量,IP地址,购买时间\n';
   var rows = orders.map(function (order) {
     return '"' + (order.product_name || '') + '",' +
            '"' + (order.buyer_name || '') + '",' +
+           '"' + (order.buyer_remark || '') + '",' +
            order.quantity + ',' +
            '"' + (order.buyer_ip || '') + '",' +
            '"' + formatDateTime(order.created_at) + '"';

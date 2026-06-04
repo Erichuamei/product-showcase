@@ -44,30 +44,38 @@ function renderProductCard(product) {
   var countBadge = paths.length > 1
     ? '<span class="product-image-count">' + paths.length + ' 张</span>'
     : '';
+  var stockBadge = isProductInStock(product)
+    ? '<span class="product-in-stock-badge">现货</span>'
+    : '';
   var imageBlock = imageUrl
     ? '<div class="product-card-image-wrap" role="button" tabindex="0" title="点击查看大图" onclick="openImageGallery(\'' + product.id + '\', 0)" onkeydown="if(event.key===\'Enter\')openImageGallery(\'' + product.id + '\', 0)">' +
         '<img class="product-card-image" src="' + imageUrl + '" alt="' + safeName + '" loading="lazy">' +
+        stockBadge +
         countBadge +
       '</div>'
-    : '<div class="product-card-image-wrap product-card-image-wrap--empty"><span>暂无图片</span></div>';
+    : '<div class="product-card-image-wrap product-card-image-wrap--empty">' +
+        stockBadge +
+        '<span>暂无图片</span>' +
+      '</div>';
 
   var productJson = JSON.stringify(product).replace(/'/g, '&#39;');
   var buyButton = quantity > 0
     ? '<button class="btn btn-buy" onclick=\'openPurchaseModal(' + productJson + ')\'>预约</button>'
     : '<button class="btn btn-buy" disabled>暂不可约</button>';
+  var cardClass = 'product-card' + (isProductInStock(product) ? ' product-card--in-stock' : '');
 
-  return '<div class="product-card">' +
+  return '<div class="' + cardClass + '">' +
       imageBlock +
       '<div class="product-card-body">' +
-        '<div class="product-card-name">' + safeName + '</div>' +
-        '<div class="product-card-price">' + price + '</div>' +
-        '<div class="product-card-meta">' +
-          '<span>货号：' + escapeHtml(huohao) + '</span>' +
+        '<div class="product-card-info">' +
+          '<div class="product-card-name">' + safeName + '</div>' +
+          '<div class="product-card-price">' + price + '</div>' +
+          '<div class="product-card-meta"><span>货号：' + escapeHtml(huohao) + '</span></div>' +
+          '<div class="product-card-remark"' + (product.remark ? ' title="' + escapeHtml(product.remark) + '"' : '') + '>' +
+            (product.remark ? escapeHtml(product.remark) : '') +
+          '</div>' +
         '</div>' +
-        (product.remark
-          ? '<div class="product-card-remark" title="' + escapeHtml(product.remark) + '">备注：' + escapeHtml(product.remark) + '</div>'
-          : '<div class="product-card-remark">备注：</div>') +
-        buyButton +
+        '<div class="product-card-actions">' + buyButton + '</div>' +
       '</div>' +
     '</div>';
 }
@@ -282,6 +290,8 @@ function openPurchaseModal(product) {
 
   // 清空表单
   buyerInput.value = '';
+  var remarkInput = document.getElementById('purchase-remark');
+  if (remarkInput) remarkInput.value = '';
   buyerError.textContent = '';
   buyerError.classList.remove('visible');
   purchaseError.textContent = '';
@@ -312,6 +322,8 @@ function closePurchaseModal() {
   // 清空表单
   buyerInput.value = '';
   quantityInput.value = 1;
+  var remarkInputClose = document.getElementById('purchase-remark');
+  if (remarkInputClose) remarkInputClose.value = '';
   buyerError.textContent = '';
   buyerError.classList.remove('visible');
   purchaseError.textContent = '';
@@ -391,6 +403,8 @@ async function submitPurchase() {
   purchaseMessage.classList.remove('visible');
 
   var buyerName = buyerInput.value.trim();
+  var remarkInput = document.getElementById('purchase-remark');
+  var buyerRemark = remarkInput ? remarkInput.value.trim() : '';
   var qty = parseInt(quantityInput.value);
 
   // 校验购买人姓名
@@ -425,7 +439,8 @@ async function submitPurchase() {
       p_product_id: currentPurchaseProduct.id,
       p_quantity: qty,
       p_buyer_name: buyerName,
-      p_buyer_ip: buyerIp
+      p_buyer_ip: buyerIp,
+      p_buyer_remark: buyerRemark
     });
 
     if (result.error) {
