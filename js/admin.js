@@ -73,10 +73,16 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   document.getElementById('image-input').addEventListener('change', function () {
-    if (this.files && this.files[0]) {
-      handleImageSelect(this.files[0]);
+    if (this.files && this.files.length > 0) {
+      handleImageFilesSelect(this.files);
     }
+    this.value = '';
   });
+
+  var maxCountEl = document.getElementById('image-max-count');
+  if (maxCountEl && CONFIG.MAX_PRODUCT_IMAGES) {
+    maxCountEl.textContent = CONFIG.MAX_PRODUCT_IMAGES;
+  }
 
   // 表单提交事件监听
   document.getElementById('submit-btn').addEventListener('click', function () {
@@ -105,42 +111,104 @@ document.addEventListener('DOMContentLoaded', function () {
 // 图片处理模块（任务 6.1）
 // ============================================================
 
-// 当前选中的图片文件（供表单提交时使用）
-let selectedImageFile = null;
+// 待上传的新图片文件
+var selectedImageFiles = [];
+// 编辑模式下已有的 Storage 路径
+var currentEditImagePaths = [];
 
-/**
- * 处理图片选择：格式校验 + 预览显示
- * @param {File} file 用户选择的文件
- */
-function handleImageSelect(file) {
-  const imageError = document.getElementById('image-error');
-  const imagePreview = document.getElementById('image-preview');
-  const uploadArea = document.getElementById('upload-area');
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+function getTotalImageCount() {
+  return currentEditImagePaths.length + selectedImageFiles.length;
+}
 
-  // 格式校验
-  if (!allowedTypes.includes(file.type)) {
-    imageError.textContent = '仅支持 JPG、PNG、WebP 格式的图片';
-    imageError.classList.add('visible');
-    return;
+function renderImagePreviewList() {
+  var listEl = document.getElementById('image-preview-list');
+  if (!listEl) return;
+
+  var html = '';
+  var i;
+
+  for (i = 0; i < currentEditImagePaths.length; i++) {
+    html += '<div class="image-preview-item">' +
+      '<img src="' + getImageUrl(currentEditImagePaths[i]) + '" alt="">' +
+      (i === 0 ? '<span class="preview-cover-tag">封面</span>' : '') +
+      '<button type="button" class="preview-remove" onclick="removeExistingImage(' + i + ')" title="移除">&times;</button>' +
+      '</div>';
   }
 
-  // 清除之前的错误提示
+  for (i = 0; i < selectedImageFiles.length; i++) {
+    var coverIdx = currentEditImagePaths.length + i;
+    html += '<div class="image-preview-item">' +
+      '<img src="' + URL.createObjectURL(selectedImageFiles[i]) + '" alt="">' +
+      (coverIdx === 0 ? '<span class="preview-cover-tag">封面</span>' : '') +
+      '<button type="button" class="preview-remove" onclick="removeNewImage(' + i + ')" title="移除">&times;</button>' +
+      '</div>';
+  }
+
+  listEl.innerHTML = html;
+}
+
+function removeExistingImage(index) {
+  currentEditImagePaths.splice(index, 1);
+  renderImagePreviewList();
+}
+
+function removeNewImage(index) {
+  selectedImageFiles.splice(index, 1);
+  renderImagePreviewList();
+}
+
+/**
+ * 处理多图选择
+ */
+function handleImageFilesSelect(fileList) {
+  var imageError = document.getElementById('image-error');
+  var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  var max = CONFIG.MAX_PRODUCT_IMAGES || 9;
+  var added = 0;
+
   imageError.textContent = '';
   imageError.classList.remove('visible');
 
-  // 存储选中的文件
-  selectedImageFile = file;
+  for (var i = 0; i < fileList.length; i++) {
+    if (getTotalImageCount() >= max) {
+      imageError.textContent = '最多上传 ' + max + ' 张图片';
+      imageError.classList.add('visible');
+      break;
+    }
+    var file = fileList[i];
+    if (!allowedTypes.includes(file.type)) {
+      imageError.textContent = '仅支持 JPG、PNG、WebP 格式';
+      imageError.classList.add('visible');
+      continue;
+    }
+    selectedImageFiles.push(file);
+    added++;
+  }
 
-  // 显示图片预览
-  imagePreview.src = URL.createObjectURL(file);
-  imagePreview.removeAttribute('hidden');
+  if (added > 0) {
+    renderImagePreviewList();
+  }
+}
 
-  // 隐藏上传区域的图标和文字
-  const uploadIcon = uploadArea.querySelector('.upload-icon');
-  const uploadText = uploadArea.querySelector('.upload-text');
-  if (uploadIcon) uploadIcon.style.display = 'none';
-  if (uploadText) uploadText.style.display = 'none';
+/**
+ * 上传多个文件到 Storage，返回路径数组
+ */
+async function uploadImageFiles(files) {
+  var paths = [];
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var blob = await compressImage(file);
+    var ext = file.name.split('.').pop();
+    var filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '.' + ext;
+    var uploadResult = await supabaseClient.storage
+      .from(CONFIG.STORAGE_BUCKET)
+      .upload(filename, blob);
+    if (uploadResult.error) {
+      throw new Error('upload_failed');
+    }
+    paths.push(filename);
+  }
+  return paths;
 }
 
 /**
@@ -227,10 +295,10 @@ function validateForm() {
   var isValid = true;
   var editId = document.getElementById('edit-id').value;
 
-  // 校验图片（新增时必填，编辑时如果已有图片则可选）
-  if (!selectedImageFile && !editId) {
+  // 校验图片（至少一张）
+  if (getTotalImageCount() === 0) {
     var imageError = document.getElementById('image-error');
-    imageError.textContent = '此项为必填';
+    imageError.textContent = '请至少上传一张商品图片';
     imageError.classList.add('visible');
     isValid = false;
   }
@@ -285,20 +353,9 @@ function resetForm() {
   document.getElementById('product-product-sku').value = '';
   document.getElementById('product-remark').value = '';
 
-  // 重置图片预览
-  var imagePreview = document.getElementById('image-preview');
-  imagePreview.src = '';
-  imagePreview.setAttribute('hidden', '');
-
-  // 恢复上传区域的图标和文字
-  var uploadArea = document.getElementById('upload-area');
-  var uploadIcon = uploadArea.querySelector('.upload-icon');
-  var uploadText = uploadArea.querySelector('.upload-text');
-  if (uploadIcon) uploadIcon.style.display = '';
-  if (uploadText) uploadText.style.display = '';
-
-  // 清除选中的图片文件
-  selectedImageFile = null;
+  selectedImageFiles = [];
+  currentEditImagePaths = [];
+  renderImagePreviewList();
   document.getElementById('image-input').value = '';
 
   // 清除编辑 ID
@@ -357,24 +414,7 @@ async function addProduct() {
   submitBtn.disabled = true;
 
   try {
-    // 压缩图片（如需要）
-    var blob = await compressImage(selectedImageFile);
-
-    // 生成唯一文件名
-    var ext = selectedImageFile.name.split('.').pop();
-    var filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '.' + ext;
-
-    // 上传图片到 Supabase Storage
-    var uploadResult = await supabaseClient.storage
-      .from(CONFIG.STORAGE_BUCKET)
-      .upload(filename, blob);
-
-    if (uploadResult.error) {
-      formMessage.textContent = '图片上传失败，请重试';
-      formMessage.classList.add('message-error');
-      submitBtn.disabled = false;
-      return;
-    }
+    var imagePaths = await uploadImageFiles(selectedImageFiles);
 
     // 插入商品记录到 Supabase Database
     var insertResult = await supabaseClient
@@ -386,7 +426,8 @@ async function addProduct() {
         quantity: quantity,
         product_sku: productSku,
         remark: remark,
-        image_url: filename,
+        image_url: imagePaths[0],
+        image_urls: imagePaths,
         status: 'active',
         sort_order: sortOrder
       });
@@ -422,8 +463,6 @@ var currentFilter = 'all';
 // 当前商品列表（用于上移/下移交换排序值）
 var currentProductList = [];
 
-// 编辑模式下保存的原始图片 URL
-var currentEditImageUrl = '';
 
 /**
  * 根据图片路径生成 Supabase Storage 公开访问 URL（admin 页面本地版本）
@@ -481,7 +520,9 @@ async function loadProductList(filter) {
     emptyState.classList.add('hidden');
 
     tbody.innerHTML = data.map(function (product) {
-      var imageUrl = getImageUrl(product.image_url);
+      var imageUrl = getImageUrl(getProductCoverPath(product));
+      var imageCount = getProductImagePaths(product).length;
+      var imageCountLabel = imageCount > 1 ? ' <small>(' + imageCount + '张)</small>' : '';
       var price = '¥' + Number(product.price).toFixed(2);
       var qty = product.quantity != null ? product.quantity : 0;
       var sku = product.sku || '-';
@@ -492,7 +533,7 @@ async function loadProductList(filter) {
       var toggleStatus = product.status === 'active' ? 'inactive' : 'active';
 
       return '<tr>' +
-        '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '"></td>' +
+        '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '">' + imageCountLabel + '</td>' +
         '<td>' + product.name + '</td>' +
         '<td>' + price + '</td>' +
         '<td>' + (product.sort_order == null ? 9999 : product.sort_order) + '</td>' +
@@ -506,7 +547,7 @@ async function loadProductList(filter) {
           '<button class="btn-link" onclick="moveProductDown(\'' + product.id + '\')">下移</button>' +
           '<button class="btn-link" onclick=\'startEdit(' + JSON.stringify(product).replace(/'/g, "&#39;") + ')\'>编辑</button>' +
           '<button class="btn-link" onclick="toggleProductStatus(\'' + product.id + '\', \'' + toggleStatus + '\')">' + toggleLabel + '</button>' +
-          '<button class="btn-link danger" onclick="deleteProduct(\'' + product.id + '\', \'' + product.image_url + '\')">删除</button>' +
+          '<button class="btn-link danger" onclick="deleteProduct(\'' + product.id + '\')">删除</button>' +
         '</td>' +
         '</tr>';
     }).join('');
@@ -535,20 +576,9 @@ function startEdit(product) {
   // 设置编辑 ID
   document.getElementById('edit-id').value = product.id;
 
-  // 保存原始图片 URL
-  currentEditImageUrl = product.image_url || '';
-
-  // 显示图片预览
-  var imagePreview = document.getElementById('image-preview');
-  imagePreview.src = getImageUrl(product.image_url);
-  imagePreview.removeAttribute('hidden');
-
-  // 隐藏上传区域的图标和文字
-  var uploadArea = document.getElementById('upload-area');
-  var uploadIcon = uploadArea.querySelector('.upload-icon');
-  var uploadText = uploadArea.querySelector('.upload-text');
-  if (uploadIcon) uploadIcon.style.display = 'none';
-  if (uploadText) uploadText.style.display = 'none';
+  selectedImageFiles = [];
+  currentEditImagePaths = getProductImagePaths(product).slice();
+  renderImagePreviewList();
 
   // 更改提交按钮文本
   document.getElementById('submit-btn').textContent = '保存修改';
@@ -595,26 +625,18 @@ async function editProduct() {
   submitBtn.disabled = true;
 
   try {
-    var imageUrl = currentEditImageUrl;
+    var imagePaths = currentEditImagePaths.slice();
+    if (selectedImageFiles.length > 0) {
+      var newPaths = await uploadImageFiles(selectedImageFiles);
+      imagePaths = imagePaths.concat(newPaths);
+    }
 
-    // 如果选择了新图片，先上传
-    if (selectedImageFile) {
-      var blob = await compressImage(selectedImageFile);
-      var ext = selectedImageFile.name.split('.').pop();
-      var filename = Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '.' + ext;
-
-      var uploadResult = await supabaseClient.storage
-        .from(CONFIG.STORAGE_BUCKET)
-        .upload(filename, blob);
-
-      if (uploadResult.error) {
-        formMessage.textContent = '图片上传失败，请重试';
-        formMessage.classList.add('message-error');
-        submitBtn.disabled = false;
-        return;
-      }
-
-      imageUrl = filename;
+    if (imagePaths.length === 0) {
+      formMessage.textContent = '请至少保留一张商品图片';
+      formMessage.classList.add('message-error');
+      formMessage.classList.add('visible');
+      submitBtn.disabled = false;
+      return;
     }
 
     // 更新商品记录（select 用于确认 sort_order 已写入；缺列或权限问题会在这里报错）
@@ -628,7 +650,8 @@ async function editProduct() {
         sort_order: sortOrder,
         product_sku: productSku,
         remark: remark,
-        image_url: imageUrl,
+        image_url: imagePaths[0],
+        image_urls: imagePaths,
         updated_at: new Date().toISOString()
       })
       .eq('id', editId)
@@ -668,14 +691,22 @@ async function editProduct() {
 }
 
 /**
- * 删除商品及其图片
+ * 删除商品及其全部图片
  * @param {string} id - 商品 ID
- * @param {string} imagePath - 图片在 Storage 中的路径
  */
-async function deleteProduct(id, imagePath) {
+async function deleteProduct(id) {
   if (!confirm('确定要删除该商品吗？')) {
     return;
   }
+
+  var product = null;
+  for (var i = 0; i < currentProductList.length; i++) {
+    if (currentProductList[i].id === id) {
+      product = currentProductList[i];
+      break;
+    }
+  }
+  var imagePaths = product ? getProductImagePaths(product) : [];
 
   try {
     var deleteResult = await supabaseClient
@@ -688,12 +719,12 @@ async function deleteProduct(id, imagePath) {
       return;
     }
 
-    // 删除 Storage 中的图片
-    await supabaseClient.storage
-      .from(CONFIG.STORAGE_BUCKET)
-      .remove([imagePath]);
+    if (imagePaths.length > 0) {
+      await supabaseClient.storage
+        .from(CONFIG.STORAGE_BUCKET)
+        .remove(imagePaths);
+    }
 
-    // 刷新商品列表
     loadProductList(currentFilter);
 
   } catch (err) {

@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>内购商品展示</title>
-  <link rel="stylesheet" href="css/style.css?v=20260604c">
+  <title>内购产品列表</title>
+  <link rel="stylesheet" href="css/style.css?v=20260604h">
 </head>
 <body>
 
   <!-- 页面标题区域 -->
   <header class="page-header">
     <div class="container">
-      <h1>内购商品展示</h1>
+      <h1>内购产品列表（拿货来19楼沿着墙上指示牌找王一凡）</h1>
     </div>
   </header>
 
@@ -26,22 +26,34 @@
     <!-- 加载失败提示（默认隐藏） -->
     <div id="error-state" class="empty-state hidden">加载失败，请刷新页面</div>
 
+    <!-- 商品大图浏览 -->
+    <div id="gallery-modal" class="gallery-overlay hidden" role="dialog" aria-modal="true" aria-label="商品图片">
+      <button type="button" class="gallery-close" onclick="closeImageGallery()" aria-label="关闭">&times;</button>
+      <div class="gallery-main" onclick="event.stopPropagation()">
+        <button type="button" class="gallery-nav gallery-prev" onclick="galleryPrev()" aria-label="上一张">&#8249;</button>
+        <img id="gallery-main-image" class="gallery-main-image" src="" alt="">
+        <button type="button" class="gallery-nav gallery-next" onclick="galleryNext()" aria-label="下一张">&#8250;</button>
+      </div>
+      <p id="gallery-caption" class="gallery-caption"></p>
+      <div id="gallery-thumbs" class="gallery-thumbs"></div>
+    </div>
+
     <!-- 购买模态框 -->
     <div id="purchase-modal" class="modal-overlay hidden">
       <div class="modal-box">
         <div class="modal-header">
-          <h3>购买商品</h3>
+          <h3>预约商品（请注意不要付款、拿到货再付款）</h3>
           <button class="modal-close" onclick="closePurchaseModal()">&times;</button>
         </div>
         <div class="modal-body">
           <div class="modal-product-name" id="modal-product-name"></div>
           <input type="hidden" id="purchase-product-id">
           <div class="form-group">
-            <label>购买数量</label>
+            <label>预约数量</label>
             <input type="number" id="purchase-quantity" value="1" min="1">
           </div>
           <div class="form-group">
-            <label>购买人姓名<span class="required">*</span></label>
+            <label>预约人姓名<span class="required">*</span></label>
             <input type="text" id="purchase-buyer" placeholder="请填写您的姓名">
             <span class="field-error" id="buyer-error"></span>
           </div>
@@ -49,15 +61,16 @@
           <div id="purchase-message" class="message message-success"></div>
         </div>
         <div class="modal-footer">
-          <button id="purchase-submit-btn" class="btn btn-primary" onclick="submitPurchase()">确认购买</button>
+          <button id="purchase-submit-btn" class="btn btn-primary" onclick="submitPurchase()">确认预约</button>
         </div>
       </div>
     </div>
   </main>
 
-  <script src="js/config.js?v=20260604c"></script>
+  <script src="js/config.js?v=20260604h"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260604c"></script>
-  <script src="js/app.js?v=20260604c"></script>
+  <script src="js/supabase.js?v=20260604h"></script>
+  <script src="js/product-images.js?v=20260604h"></script>
+  <script src="js/app.js?v=20260604h"></script>
 </body>
 </html>

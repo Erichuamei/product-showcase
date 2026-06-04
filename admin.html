@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 内购商品展示</title>
-  <link rel="stylesheet" href="css/style.css?v=20260604d">
+  <link rel="stylesheet" href="css/style.css?v=20260604e">
 </head>
 <body>
 
@@ -40,10 +40,11 @@
         <div class="form-image-upload">
           <div class="image-upload-area" id="upload-area">
             <span class="upload-icon">📷</span>
-            <span class="upload-text">点击上传图片</span>
-            <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp">
+            <span class="upload-text">点击上传图片（可多选）</span>
+            <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" multiple>
           </div>
-          <img id="image-preview" src="" alt="图片预览" hidden>
+          <div id="image-preview-list" class="image-preview-list"></div>
+          <p class="image-upload-hint">最多 <span id="image-max-count">9</span> 张，第一张为封面</p>
           <span class="field-error" id="image-error"></span>
         </div>
 
@@ -178,9 +179,10 @@
 
   </div>
 
-  <script src="js/config.js?v=20260604d"></script>
+  <script src="js/config.js?v=20260604e"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260604d"></script>
-  <script src="js/admin.js?v=20260604d"></script>
+  <script src="js/supabase.js?v=20260604e"></script>
+  <script src="js/product-images.js?v=20260604e"></script>
+  <script src="js/admin.js?v=20260604e"></script>
 </body>
 </html>
