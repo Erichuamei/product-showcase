@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 内购商品展示</title>
-  <link rel="stylesheet" href="css/style.css?v=20260604t">
+  <link rel="stylesheet" href="css/style.css?v=20260604u">
 </head>
 <body>
 
@@ -166,12 +166,12 @@
               <th class="col-checkbox">
                 <input type="checkbox" id="order-select-all" title="全选本页" onchange="toggleSelectAllOrdersOnPage(this.checked)">
               </th>
-              <th>商品名称</th>
-              <th>购买人</th>
-              <th>用户备注</th>
-              <th>数量</th>
-              <th>IP地址</th>
-              <th>购买时间</th>
+              <th class="th-sortable" data-sort="product_name" onclick="sortOrdersBy('product_name')">商品名称<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="product_sku" onclick="sortOrdersBy('product_sku')">货号<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="buyer_name" onclick="sortOrdersBy('buyer_name')">购买人<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="buyer_remark" onclick="sortOrdersBy('buyer_remark')">用户备注<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="quantity" onclick="sortOrdersBy('quantity')">数量<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="created_at" onclick="sortOrdersBy('created_at')">购买时间<span class="sort-indicator"></span></th>
               <th>操作</th>
             </tr>
           </thead>
@@ -188,10 +188,10 @@
 
   </div>
 
-  <script src="js/config.js?v=20260604t"></script>
+  <script src="js/config.js?v=20260604u"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260604t"></script>
-  <script src="js/product-images.js?v=20260604t"></script>
-  <script src="js/admin.js?v=20260604t"></script>
+  <script src="js/supabase.js?v=20260604u"></script>
+  <script src="js/product-images.js?v=20260604u"></script>
+  <script src="js/admin.js?v=20260604u"></script>
 </body>
 </html>

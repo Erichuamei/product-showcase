@@ -859,6 +859,23 @@ body.gallery-open {
   letter-spacing: 0.3px;
 }
 
+.product-table th.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.product-table th.th-sortable:hover {
+  color: var(--color-primary);
+}
+
+.product-table th.th-sortable .sort-indicator {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
 .product-table tbody tr:hover {
   background: rgba(24, 144, 255, 0.03);
 }

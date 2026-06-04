@@ -859,6 +859,9 @@ var allOrders = [];
 var orderPage = 1;
 var orderPageSize = 50;
 var selectedOrderIds = new Set();
+var orderSortField = 'created_at';
+var orderSortAsc = false;
+var productSkuByProductId = {};
 
 /**
  * 加载购买记录列表并渲染到表格（带分页）
@@ -876,16 +879,16 @@ async function loadOrderList() {
       } catch (e) {
         allOrders = [];
       }
-      allOrders.sort(function (a, b) {
-        return a.created_at < b.created_at ? 1 : -1;
-      });
+      await enrichOrdersWithSkuFromProducts(allOrders);
+      sortAllOrders();
     } else {
       var result = await supabaseClient
         .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
       if (result.error) throw result.error;
       allOrders = result.data || [];
+      await enrichOrdersWithSkuFromProducts(allOrders);
+      sortAllOrders();
     }
 
     selectedOrderIds.clear();
@@ -903,6 +906,7 @@ async function loadOrderList() {
     emptyState.classList.add('hidden');
     orderPage = 1;
     renderOrderPage();
+    updateOrderSortHeaders();
 
   } catch (err) {
     tbody.innerHTML = '';
@@ -910,6 +914,127 @@ async function loadOrderList() {
     pagination.classList.add('hidden');
     emptyState.classList.remove('hidden');
   }
+}
+
+/**
+ * 为订单补全货号（优先订单冗余字段，否则查商品表）
+ */
+function enrichOrdersWithSku(orders) {
+  orders.forEach(function (order) {
+    order.product_sku = getOrderProductSku(order);
+  });
+}
+
+async function enrichOrdersWithSkuFromProducts(orders) {
+  if (CONFIG.DEMO_MODE) {
+    try {
+      var demoProducts = JSON.parse(localStorage.getItem('demo_products') || '[]');
+      demoProducts.forEach(function (p) {
+        productSkuByProductId[p.id] = p.sku || '';
+      });
+    } catch (e) {
+      /* ignore */
+    }
+    enrichOrdersWithSku(orders);
+    return;
+  }
+
+  var needLookup = [];
+  orders.forEach(function (order) {
+    if (order.product_sku != null && order.product_sku !== '') {
+      return;
+    }
+    if (order.product_id && productSkuByProductId[order.product_id] !== undefined) {
+      order.product_sku = productSkuByProductId[order.product_id];
+      return;
+    }
+    if (order.product_id) {
+      needLookup.push(order.product_id);
+    }
+  });
+
+  var missingIds = needLookup.filter(function (id, index, arr) {
+    return arr.indexOf(id) === index && productSkuByProductId[id] === undefined;
+  });
+
+  if (missingIds.length > 0) {
+    var productsResult = await supabaseClient
+      .from('products')
+      .select('id, sku')
+      .in('id', missingIds);
+    if (!productsResult.error && productsResult.data) {
+      productsResult.data.forEach(function (p) {
+        productSkuByProductId[p.id] = p.sku || '';
+      });
+    }
+  }
+
+  enrichOrdersWithSku(orders);
+}
+
+function getOrderProductSku(order) {
+  if (order.product_sku != null && order.product_sku !== '') {
+    return order.product_sku;
+  }
+  if (order.product_id && productSkuByProductId[order.product_id] !== undefined) {
+    return productSkuByProductId[order.product_id] || '-';
+  }
+  return '-';
+}
+
+function sortAllOrders() {
+  var field = orderSortField;
+  var asc = orderSortAsc;
+  allOrders.sort(function (a, b) {
+    var va;
+    var vb;
+    if (field === 'created_at') {
+      va = new Date(a.created_at).getTime();
+      vb = new Date(b.created_at).getTime();
+    } else if (field === 'quantity') {
+      va = Number(a.quantity) || 0;
+      vb = Number(b.quantity) || 0;
+    } else if (field === 'product_sku') {
+      va = getOrderProductSku(a).toLowerCase();
+      vb = getOrderProductSku(b).toLowerCase();
+    } else {
+      va = (a[field] == null ? '' : String(a[field])).toLowerCase();
+      vb = (b[field] == null ? '' : String(b[field])).toLowerCase();
+    }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+function sortOrdersBy(field) {
+  if (orderSortField === field) {
+    orderSortAsc = !orderSortAsc;
+  } else {
+    orderSortField = field;
+    orderSortAsc = field === 'created_at' ? false : true;
+  }
+  sortAllOrders();
+  orderPage = 1;
+  renderOrderPage();
+  updateOrderSortHeaders();
+}
+
+function updateOrderSortHeaders() {
+  var headers = document.querySelectorAll('#order-table .th-sortable');
+  headers.forEach(function (th) {
+    var field = th.getAttribute('data-sort');
+    var indicator = th.querySelector('.sort-indicator');
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (field === orderSortField) {
+      th.classList.add(orderSortAsc ? 'sort-asc' : 'sort-desc');
+      if (indicator) {
+        indicator.textContent = orderSortAsc ? ' ▲' : ' ▼';
+      }
+    } else if (indicator) {
+      indicator.textContent = '';
+    }
+  });
 }
 
 /**
@@ -933,10 +1058,10 @@ function renderOrderPage() {
       '<td class="col-checkbox"><input type="checkbox" class="order-row-select" data-id="' + order.id + '"' + checked +
         ' onchange="toggleOrderSelect(\'' + order.id + '\', this.checked)"></td>' +
       '<td>' + order.product_name + '</td>' +
+      '<td>' + getOrderProductSku(order) + '</td>' +
       '<td>' + order.buyer_name + '</td>' +
       '<td>' + (order.buyer_remark ? String(order.buyer_remark).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '-') + '</td>' +
       '<td>' + order.quantity + '</td>' +
-      '<td>' + (order.buyer_ip || '-') + '</td>' +
       '<td>' + formatDateTime(order.created_at) + '</td>' +
       '<td><button class="btn-link danger" onclick="deleteOrder(\'' + order.id + '\')">删除</button></td>' +
       '</tr>';
@@ -1072,13 +1197,13 @@ function getSelectedOrders() {
  */
 function downloadOrdersCsv(orders, filenameSuffix) {
   var bom = '\uFEFF';
-  var header = '商品名称,购买人,用户备注,数量,IP地址,购买时间\n';
+  var header = '商品名称,货号,购买人,用户备注,数量,购买时间\n';
   var rows = orders.map(function (order) {
     return '"' + (order.product_name || '') + '",' +
+           '"' + getOrderProductSku(order) + '",' +
            '"' + (order.buyer_name || '') + '",' +
            '"' + (order.buyer_remark || '') + '",' +
            order.quantity + ',' +
-           '"' + (order.buyer_ip || '') + '",' +
            '"' + formatDateTime(order.created_at) + '"';
   }).join('\n');
 

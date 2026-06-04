@@ -200,6 +200,7 @@ if (CONFIG.DEMO_MODE) {
           id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
           product_id: productId,
           product_name: product.name,
+          product_sku: product.sku || '',
           buyer_name: buyerName,
           buyer_ip: params.p_buyer_ip || '',
           buyer_remark: params.p_buyer_remark || '',
