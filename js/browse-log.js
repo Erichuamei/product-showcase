@@ -9,6 +9,19 @@ function getBrowseEventLabel(eventType) {
   return BROWSE_EVENT_LABELS[eventType] || eventType || '-';
 }
 
+var BROWSE_BUYER_NAME_KEY = 'purchase_buyer_name';
+
+function getBrowseBuyerName() {
+  if (typeof getSavedBuyerName === 'function') {
+    return getSavedBuyerName();
+  }
+  try {
+    return (localStorage.getItem(BROWSE_BUYER_NAME_KEY) || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
 function getBrowseSessionId() {
   var key = 'browse_session_id';
   try {
@@ -64,6 +77,7 @@ function logBrowseEvent(options) {
     session_id: getBrowseSessionId(),
     visitor_ip: options.visitorIp || '',
     user_agent: navigator.userAgent || '',
+    buyer_name: getBrowseBuyerName(),
     created_at: new Date().toISOString()
   };
 
@@ -84,7 +98,8 @@ function logBrowseEvent(options) {
     product_sku: record.product_sku,
     session_id: record.session_id,
     visitor_ip: record.visitor_ip,
-    user_agent: record.user_agent
+    user_agent: record.user_agent,
+    buyer_name: record.buyer_name || ''
   }).then(function () {}).catch(function () {});
 }
 

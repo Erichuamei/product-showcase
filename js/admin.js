@@ -2441,6 +2441,7 @@ function renderBrowsePage() {
       '<td class="browse-col-time">' + formatDateTime(log.created_at) + '</td>' +
       '<td class="browse-col-product">' + (log.product_name || '-') + '</td>' +
       '<td class="browse-col-product">' + (log.product_sku || '-') + '</td>' +
+      '<td class="browse-col-name">' + (log.buyer_name || '-') + '</td>' +
       '<td class="browse-col-ip">' + (log.visitor_ip || '-') + '</td>' +
       '<td class="browse-col-device" title="' + String(log.user_agent || '').replace(/"/g, '&quot;') + '">' + summarizeUserAgent(log.user_agent) + '</td>' +
       '<td class="browse-col-action"><button class="btn-link danger" onclick="deleteBrowseLog(\'' + log.id + '\')">删除</button></td>' +
