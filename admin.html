@@ -254,7 +254,35 @@
     <!-- 抽奖管理 -->
     <section class="admin-section">
       <h2>抽奖管理</h2>
-      <div id="lottery-admin-prizes" class="lottery-admin-prizes"></div>
+      <div class="lottery-admin-toolbar">
+        <span class="lottery-admin-toolbar-label">前台抽奖开关</span>
+        <button type="button" id="lottery-enabled-toggle" class="btn btn-primary btn-sm" onclick="toggleLotteryEnabled()">已开启</button>
+        <span class="lottery-admin-hint">关闭后，前台按钮变灰并显示「抽奖未开启」</span>
+      </div>
+      <div class="lottery-prize-config-section">
+        <h3 class="lottery-config-subtitle">奖品设置</h3>
+        <p class="lottery-admin-hint">可配置奖项名称、奖品内容、总数量与剩余数量；保存后前台即时生效。</p>
+        <div class="product-table-wrapper">
+          <table class="product-table" id="lottery-prize-config-table">
+            <thead>
+              <tr>
+                <th>奖项</th>
+                <th>奖品</th>
+                <th>总数量</th>
+                <th>剩余</th>
+                <th>排序</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="lottery-prize-config-tbody"></tbody>
+          </table>
+        </div>
+        <div class="lottery-prize-config-actions">
+          <button type="button" class="btn btn-default btn-sm" onclick="addLotteryPrizeConfigRow()">添加奖项</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveLotteryPrizeConfig()">保存奖品设置</button>
+        </div>
+      </div>
+      <h3 class="lottery-config-subtitle">抽奖记录</h3>
       <div class="order-batch-bar">
         <span id="lottery-selected-count" class="order-selected-count">已选 0 条</span>
         <button type="button" class="btn btn-danger btn-sm" id="lottery-delete-selected-btn" onclick="deleteSelectedLotteryDraws()" disabled>批量删除</button>
@@ -320,12 +348,12 @@
 
   </div>
 
-  <script src="js/config.js?v=20260605i"></script>
+  <script src="js/config.js?v=20260605j"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260605i"></script>
-  <script src="js/product-images.js?v=20260605i"></script>
-  <script src="js/browse-log.js?v=20260605i"></script>
-  <script src="js/lottery.js?v=20260605i"></script>
-  <script src="js/admin.js?v=20260605i"></script>
+  <script src="js/supabase.js?v=20260605j"></script>
+  <script src="js/product-images.js?v=20260605j"></script>
+  <script src="js/browse-log.js?v=20260605j"></script>
+  <script src="js/lottery.js?v=20260605j"></script>
+  <script src="js/admin.js?v=20260605j"></script>
 </body>
 </html>

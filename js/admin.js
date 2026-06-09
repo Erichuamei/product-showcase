@@ -1728,9 +1728,194 @@ async function deleteOrder(orderId) {
 // ============================================================
 
 var allLotteryDraws = [];
+var lotteryAdminPrizes = [];
+var lotteryAdminEnabled = true;
 var selectedLotteryDrawIds = new Set();
 var lotterySortField = 'created_at';
 var lotterySortAsc = false;
+
+function escapeLotteryConfigAttr(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+function updateLotteryEnabledToggleUI() {
+  var btn = document.getElementById('lottery-enabled-toggle');
+  if (!btn) return;
+  if (lotteryAdminEnabled) {
+    btn.textContent = '已开启';
+    btn.className = 'btn btn-primary btn-sm';
+  } else {
+    btn.textContent = '已关闭';
+    btn.className = 'btn btn-default btn-sm';
+  }
+}
+
+async function loadLotteryAdminSettings() {
+  try {
+    if (CONFIG.DEMO_MODE) {
+      var demoSettings = typeof getDemoLotterySettings === 'function' ? getDemoLotterySettings() : { enabled: true };
+      lotteryAdminEnabled = !!demoSettings.enabled;
+    } else {
+      var result = await supabaseClient.from('lottery_settings').select('*').eq('id', 1).maybeSingle();
+      if (result.error) throw result.error;
+      lotteryAdminEnabled = !!(result.data && result.data.enabled);
+    }
+  } catch (e) {
+    lotteryAdminEnabled = false;
+  }
+  updateLotteryEnabledToggleUI();
+}
+
+async function toggleLotteryEnabled() {
+  var nextEnabled = !lotteryAdminEnabled;
+  try {
+    if (CONFIG.DEMO_MODE) {
+      if (typeof saveDemoLotterySettings === 'function') {
+        saveDemoLotterySettings({ enabled: nextEnabled });
+      }
+    } else {
+      var result = await supabaseClient
+        .from('lottery_settings')
+        .upsert({ id: 1, enabled: nextEnabled, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+      if (result.error) throw result.error;
+    }
+    lotteryAdminEnabled = nextEnabled;
+    updateLotteryEnabledToggleUI();
+  } catch (e) {
+    alert('切换抽奖开关失败，请重试');
+  }
+}
+
+function renderLotteryPrizeConfigTable() {
+  var tbody = document.getElementById('lottery-prize-config-tbody');
+  if (!tbody) return;
+
+  if (!lotteryAdminPrizes.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无奖品，请点击「添加奖项」</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = lotteryAdminPrizes.map(function (p) {
+    var tier = escapeLotteryConfigAttr(p.tier);
+    return '<tr data-tier="' + tier + '">' +
+      '<td><input type="text" class="lottery-config-input lottery-config-label" value="' + escapeLotteryConfigAttr(p.label) + '"></td>' +
+      '<td><input type="text" class="lottery-config-input lottery-config-description" value="' + escapeLotteryConfigAttr(p.description) + '"></td>' +
+      '<td><input type="number" min="0" class="lottery-config-input lottery-config-total" value="' + (p.total_quota || 0) + '"></td>' +
+      '<td><input type="number" min="0" class="lottery-config-input lottery-config-remaining" value="' + (p.remaining_quota || 0) + '"></td>' +
+      '<td><input type="number" min="0" class="lottery-config-input lottery-config-sort" value="' + (p.sort_order || 0) + '"></td>' +
+      '<td><button type="button" class="btn-link danger" onclick="deleteLotteryPrizeConfigRow(\'' + tier.replace(/'/g, "\\'") + '\')">删除</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function addLotteryPrizeConfigRow() {
+  var tier = 'tier_' + Date.now().toString(36);
+  var nextSort = lotteryAdminPrizes.length + 1;
+  lotteryAdminPrizes.push({
+    tier: tier,
+    label: '',
+    description: '',
+    total_quota: 1,
+    remaining_quota: 1,
+    sort_order: nextSort
+  });
+  renderLotteryPrizeConfigTable();
+}
+
+function collectLotteryPrizeConfigRows() {
+  var tbody = document.getElementById('lottery-prize-config-tbody');
+  if (!tbody) return [];
+
+  var rows = tbody.querySelectorAll('tr[data-tier]');
+  var prizes = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var label = row.querySelector('.lottery-config-label');
+    var description = row.querySelector('.lottery-config-description');
+    var total = row.querySelector('.lottery-config-total');
+    var remaining = row.querySelector('.lottery-config-remaining');
+    var sort = row.querySelector('.lottery-config-sort');
+    var labelVal = label ? label.value.trim() : '';
+    var descVal = description ? description.value.trim() : '';
+    var totalVal = total ? parseInt(total.value, 10) : 0;
+    var remainingVal = remaining ? parseInt(remaining.value, 10) : 0;
+    var sortVal = sort ? parseInt(sort.value, 10) : (i + 1);
+
+    if (!labelVal) {
+      alert('请填写第 ' + (i + 1) + ' 行的奖项名称');
+      return null;
+    }
+    if (!descVal) {
+      alert('请填写第 ' + (i + 1) + ' 行的奖品内容');
+      return null;
+    }
+    if (isNaN(totalVal) || totalVal < 0) {
+      alert('第 ' + (i + 1) + ' 行总数量无效');
+      return null;
+    }
+    if (isNaN(remainingVal) || remainingVal < 0) {
+      alert('第 ' + (i + 1) + ' 行剩余数量无效');
+      return null;
+    }
+    if (remainingVal > totalVal) {
+      alert('第 ' + (i + 1) + ' 行剩余数量不能大于总数量');
+      return null;
+    }
+
+    prizes.push({
+      tier: row.getAttribute('data-tier'),
+      label: labelVal,
+      description: descVal,
+      total_quota: totalVal,
+      remaining_quota: remainingVal,
+      sort_order: isNaN(sortVal) ? (i + 1) : sortVal
+    });
+  }
+  return prizes;
+}
+
+async function saveLotteryPrizeConfig() {
+  var prizes = collectLotteryPrizeConfigRows();
+  if (!prizes) return;
+
+  try {
+    if (CONFIG.DEMO_MODE) {
+      if (typeof saveDemoLotteryPrizes === 'function') saveDemoLotteryPrizes(prizes);
+    } else {
+      var existingRes = await supabaseClient.from('lottery_prizes').select('tier');
+      if (existingRes.error) throw existingRes.error;
+      var newTiers = prizes.map(function (p) { return p.tier; });
+      var oldTiers = (existingRes.data || []).map(function (p) { return p.tier; });
+      var removeTiers = oldTiers.filter(function (tier) { return newTiers.indexOf(tier) === -1; });
+
+      if (removeTiers.length) {
+        var delRes = await supabaseClient.from('lottery_prizes').delete().in('tier', removeTiers);
+        if (delRes.error) {
+          alert('删除旧奖项失败：若已有中奖记录关联该奖项，请先保留或清理记录');
+          return;
+        }
+      }
+
+      var upsertRes = await supabaseClient.from('lottery_prizes').upsert(prizes, { onConflict: 'tier' });
+      if (upsertRes.error) throw upsertRes.error;
+    }
+
+    lotteryAdminPrizes = prizes;
+    renderLotteryPrizeConfigTable();
+    alert('奖品设置已保存');
+  } catch (e) {
+    alert('保存奖品设置失败，请重试');
+  }
+}
+
+async function deleteLotteryPrizeConfigRow(tier) {
+  if (!confirm('确定要删除该奖项吗？保存后生效。')) return;
+  lotteryAdminPrizes = lotteryAdminPrizes.filter(function (p) { return p.tier !== tier; });
+  renderLotteryPrizeConfigTable();
+}
 
 function sortAllLotteryDraws() {
   var field = lotterySortField;
@@ -1883,36 +2068,32 @@ function updateLotteryBatchToolbar() {
 async function loadLotteryAdminList() {
   var tbody = document.getElementById('lottery-admin-tbody');
   var empty = document.getElementById('lottery-admin-empty');
-  var prizesEl = document.getElementById('lottery-admin-prizes');
   if (!tbody) return;
 
   try {
-    var prizes;
+    await loadLotteryAdminSettings();
+
     if (CONFIG.DEMO_MODE) {
-      prizes = typeof getDemoLotteryPrizes === 'function' ? getDemoLotteryPrizes() : [];
+      lotteryAdminPrizes = typeof getDemoLotteryPrizes === 'function' ? getDemoLotteryPrizes() : [];
       allLotteryDraws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
     } else {
       var pRes = await supabaseClient.from('lottery_prizes').select('*').order('sort_order', { ascending: true });
       var dRes = await supabaseClient.from('lottery_draws').select('*');
       if (pRes.error) throw pRes.error;
       if (dRes.error) throw dRes.error;
-      prizes = pRes.data || [];
+      lotteryAdminPrizes = pRes.data || [];
       allLotteryDraws = dRes.data || [];
     }
 
-    if (prizesEl) {
-      prizesEl.innerHTML = prizes.map(function (p) {
-        return '<span class="lottery-prize-chip">' + p.label + '：' + p.description +
-          '（剩余 ' + p.remaining_quota + '/' + p.total_quota + '）</span>';
-      }).join('');
-    }
-
+    renderLotteryPrizeConfigTable();
     selectedLotteryDrawIds.clear();
     sortAllLotteryDraws();
     renderLotteryAdminTable();
     updateLotterySortHeaders();
   } catch (e) {
     allLotteryDraws = [];
+    lotteryAdminPrizes = [];
+    renderLotteryPrizeConfigTable();
     tbody.innerHTML = '';
     if (empty) {
       empty.textContent = '抽奖记录加载失败';

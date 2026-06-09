@@ -8,6 +8,7 @@ var currentLotterySessionId = '';
 var lotteryPrizesSoldOut = false;
 var lotteryUserAlreadyDrawn = false;
 var lotteryWindowsBlocked = false;
+var lotteryNotEnabled = false;
 
 function getLotterySessionId() {
   if (typeof getBrowseSessionId === 'function') {
@@ -58,7 +59,29 @@ function getLotteryErrorMessage(err) {
   if (msg.indexOf('ip_required') !== -1) return '无法获取网络信息，请稍后重试';
   if (msg.indexOf('name_required') !== -1) return '请填写姓名';
   if (msg.indexOf('name_already_set') !== -1) return '姓名已登记';
+  if (msg.indexOf('lottery_closed') !== -1) return '抽奖活动暂未开启';
   return '操作失败，请稍后重试';
+}
+
+async function loadLotterySettings() {
+  try {
+    if (CONFIG.DEMO_MODE) {
+      var demoSettings = getDemoLotterySettings();
+      lotteryNotEnabled = !demoSettings.enabled;
+      return demoSettings;
+    }
+    var result = await supabaseClient
+      .from('lottery_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    lotteryNotEnabled = !(result.data && result.data.enabled);
+    return result.data || { enabled: false };
+  } catch (e) {
+    lotteryNotEnabled = true;
+    return { enabled: false };
+  }
 }
 
 function updateLotteryDrawButton() {
@@ -69,6 +92,13 @@ function updateLotteryDrawButton() {
     drawBtn.disabled = true;
     drawBtn.textContent = '仅限 Windows 参与';
     drawBtn.classList.remove('btn-lottery--soldout');
+    return;
+  }
+
+  if (lotteryNotEnabled) {
+    drawBtn.disabled = true;
+    drawBtn.textContent = '抽奖未开启';
+    drawBtn.classList.add('btn-lottery--soldout');
     return;
   }
 
@@ -204,6 +234,8 @@ async function initLotterySection() {
   var drawBtn = document.getElementById('lottery-draw-btn');
   var statusMsg = document.getElementById('lottery-status-msg');
 
+  await loadLotterySettings();
+
   if (!isWindowsDevice()) {
     lotteryWindowsBlocked = true;
     updateLotteryDrawButton();
@@ -239,7 +271,9 @@ async function initLotterySection() {
   }
 
   await loadLotteryPrizeStock();
-  if (lotteryPrizesSoldOut && !lotteryUserAlreadyDrawn && statusMsg) {
+  if (lotteryNotEnabled && !lotteryUserAlreadyDrawn && statusMsg) {
+    statusMsg.textContent = '抽奖活动暂未开启，请稍后再试';
+  } else if (lotteryPrizesSoldOut && !lotteryUserAlreadyDrawn && statusMsg) {
     statusMsg.textContent = '奖品已全部分完，抽奖已结束';
   }
   await loadLotteryWinnersPublic();
@@ -272,7 +306,7 @@ async function performLotteryDraw() {
     return;
   }
 
-  if (lotteryPrizesSoldOut) {
+  if (lotteryNotEnabled || lotteryPrizesSoldOut) {
     updateLotteryDrawButton();
     return;
   }
@@ -490,6 +524,18 @@ async function submitLotteryWinnerName() {
 
 // ---------- DEMO 模式 ----------
 
+function getDemoLotterySettings() {
+  try {
+    var stored = localStorage.getItem('demo_lottery_settings');
+    if (stored) return JSON.parse(stored);
+  } catch (e) { /* ignore */ }
+  return { enabled: true };
+}
+
+function saveDemoLotterySettings(settings) {
+  localStorage.setItem('demo_lottery_settings', JSON.stringify(settings));
+}
+
 function getDemoLotteryPrizes() {
   try {
     var stored = localStorage.getItem('demo_lottery_prizes');
@@ -529,6 +575,9 @@ function escapeLotteryHtml(text) {
 }
 
 function demoPerformLotteryDraw(ip, ua, sessionId) {
+  if (!getDemoLotterySettings().enabled) {
+    throw { message: 'lottery_closed' };
+  }
   if (!/Windows/i.test(ua || '')) {
     throw { message: 'windows_only' };
   }

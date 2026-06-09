@@ -1613,6 +1613,61 @@ body.gallery-open {
   margin-bottom: 14px;
 }
 
+.lottery-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  background: var(--color-bg-white);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+}
+
+.lottery-admin-toolbar-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.lottery-admin-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.lottery-config-subtitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.lottery-prize-config-section {
+  margin-bottom: 22px;
+}
+
+.lottery-prize-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.lottery-config-input {
+  width: 100%;
+  min-width: 72px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+#lottery-prize-config-table .lottery-config-total,
+#lottery-prize-config-table .lottery-config-remaining,
+#lottery-prize-config-table .lottery-config-sort {
+  max-width: 88px;
+}
+
 .lottery-prize-chip {
   display: inline-block;
   padding: 4px 10px;
