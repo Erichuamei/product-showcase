@@ -1784,7 +1784,7 @@ async function loadLotteryAdminList() {
 }
 
 async function deleteLotteryDraw(drawId) {
-  if (!confirm('确定要删除该抽奖记录吗？删除后该 IP 可重新抽奖。')) return;
+  if (!confirm('确定要删除该抽奖记录吗？删除后该设备可重新抽奖。')) return;
 
   try {
     if (CONFIG.DEMO_MODE) {

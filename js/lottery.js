@@ -1,9 +1,17 @@
-// 内购抽奖 — 仅 Windows、每 IP 一次、中奖率约 20%
+// 内购抽奖 — 仅 Windows、每台设备一次、中奖率约 20%
 
 var LOTTERY_WIN_RATE_TEXT = '5 次约中 1 次';
 var LOTTERY_CONSOLATION_COUPON = '满5减0.5';
 var currentLotteryDrawId = null;
 var currentLotteryVisitorIp = '';
+var currentLotterySessionId = '';
+
+function getLotterySessionId() {
+  if (typeof getBrowseSessionId === 'function') {
+    return getBrowseSessionId();
+  }
+  return '';
+}
 
 function isWindowsDevice() {
   var ua = navigator.userAgent || '';
@@ -42,7 +50,8 @@ function formatLotteryDate(iso) {
 function getLotteryErrorMessage(err) {
   var msg = (err && err.message) ? err.message : String(err || '');
   if (msg.indexOf('windows_only') !== -1) return '抽奖仅限 Windows 电脑参与';
-  if (msg.indexOf('already_drawn') !== -1) return '本 IP 已参与过抽奖，每人仅限 1 次';
+  if (msg.indexOf('already_drawn') !== -1) return '本设备已参与过抽奖，每人仅限 1 次';
+  if (msg.indexOf('session_required') !== -1) return '无法识别本设备，请关闭隐私/无痕模式后重试';
   if (msg.indexOf('ip_required') !== -1) return '无法获取网络信息，请稍后重试';
   if (msg.indexOf('name_required') !== -1) return '请填写姓名';
   if (msg.indexOf('name_already_set') !== -1) return '姓名已登记';
@@ -138,16 +147,16 @@ async function loadLotteryWinnersPublic() {
   }
 }
 
-async function checkLotteryAlreadyDrawn(ip) {
-  if (!ip) return null;
+async function checkLotteryAlreadyDrawn(sessionId) {
+  if (!sessionId) return null;
   try {
     if (CONFIG.DEMO_MODE) {
-      return getDemoLotteryDraws().find(function (d) { return d.visitor_ip === ip; }) || null;
+      return getDemoLotteryDraws().find(function (d) { return d.session_id === sessionId; }) || null;
     }
     var result = await supabaseClient
       .from('lottery_draws')
       .select('*')
-      .eq('visitor_ip', ip)
+      .eq('session_id', sessionId)
       .maybeSingle();
     if (result.error) throw result.error;
     return result.data;
@@ -173,8 +182,9 @@ async function initLotterySection() {
     return;
   }
 
+  currentLotterySessionId = getLotterySessionId();
   currentLotteryVisitorIp = await fetchLotteryVisitorIp();
-  var existing = await checkLotteryAlreadyDrawn(currentLotteryVisitorIp);
+  var existing = await checkLotteryAlreadyDrawn(currentLotterySessionId);
 
   if (existing) {
     if (drawBtn) {
@@ -187,7 +197,7 @@ async function initLotterySection() {
       } else if (existing.consolation_coupon) {
         statusMsg.textContent = '您已获得安慰券：' + existing.consolation_coupon + (existing.winner_name ? '' : '，请登记姓名');
       } else {
-        statusMsg.textContent = '感谢您的参与，本 IP 已使用过抽奖机会';
+        statusMsg.textContent = '感谢您的参与，本设备已使用过抽奖机会';
       }
     }
     if (existing.won && !existing.winner_name) {
@@ -212,17 +222,21 @@ async function performLotteryDraw() {
     return;
   }
 
-  if (!currentLotteryVisitorIp) {
-    currentLotteryVisitorIp = await fetchLotteryVisitorIp();
+  if (!currentLotterySessionId) {
+    currentLotterySessionId = getLotterySessionId();
   }
-  if (!currentLotteryVisitorIp) {
-    alert('无法获取网络信息，请检查网络后重试');
+  if (!currentLotterySessionId || currentLotterySessionId === 'unknown') {
+    alert('无法识别本设备，请关闭隐私/无痕模式后重试');
     return;
   }
 
-  var existing = await checkLotteryAlreadyDrawn(currentLotteryVisitorIp);
+  if (!currentLotteryVisitorIp) {
+    currentLotteryVisitorIp = await fetchLotteryVisitorIp();
+  }
+
+  var existing = await checkLotteryAlreadyDrawn(currentLotterySessionId);
   if (existing) {
-    alert('本 IP 已参与过抽奖，每人仅限 1 次');
+    alert('本设备已参与过抽奖，每人仅限 1 次');
     return;
   }
 
@@ -235,7 +249,7 @@ async function performLotteryDraw() {
     var result;
     if (CONFIG.DEMO_MODE) {
       try {
-        result = { data: demoPerformLotteryDraw(currentLotteryVisitorIp, navigator.userAgent, typeof getBrowseSessionId === 'function' ? getBrowseSessionId() : ''), error: null };
+        result = { data: demoPerformLotteryDraw(currentLotteryVisitorIp, navigator.userAgent, currentLotterySessionId), error: null };
       } catch (demoErr) {
         result = { data: null, error: demoErr };
       }
@@ -243,7 +257,7 @@ async function performLotteryDraw() {
       result = await supabaseClient.rpc('perform_lottery_draw', {
         p_visitor_ip: currentLotteryVisitorIp,
         p_user_agent: navigator.userAgent || '',
-        p_session_id: typeof getBrowseSessionId === 'function' ? getBrowseSessionId() : ''
+        p_session_id: currentLotterySessionId
       });
     }
 
@@ -334,7 +348,7 @@ async function submitLotteryLoseRegistration() {
     if (errEl) errEl.textContent = '请填写姓名';
     return;
   }
-  if (!currentLotteryDrawId || !currentLotteryVisitorIp) {
+  if (!currentLotteryDrawId || !currentLotterySessionId) {
     if (errEl) errEl.textContent = '抽奖记录无效，请刷新页面';
     return;
   }
@@ -348,14 +362,14 @@ async function submitLotteryLoseRegistration() {
     var result;
     if (CONFIG.DEMO_MODE) {
       try {
-        result = { data: demoSubmitLotteryWinnerName(currentLotteryDrawId, currentLotteryVisitorIp, winnerName), error: null };
+        result = { data: demoSubmitLotteryWinnerName(currentLotteryDrawId, currentLotterySessionId, winnerName), error: null };
       } catch (demoErr) {
         result = { data: null, error: demoErr };
       }
     } else {
       result = await supabaseClient.rpc('submit_lottery_winner_name', {
         p_draw_id: currentLotteryDrawId,
-        p_visitor_ip: currentLotteryVisitorIp,
+        p_session_id: currentLotterySessionId,
         p_winner_name: winnerName
       });
     }
@@ -393,7 +407,7 @@ async function submitLotteryWinnerName() {
     if (errEl) errEl.textContent = '请填写姓名';
     return;
   }
-  if (!currentLotteryDrawId || !currentLotteryVisitorIp) {
+  if (!currentLotteryDrawId || !currentLotterySessionId) {
     if (errEl) errEl.textContent = '抽奖记录无效，请刷新页面';
     return;
   }
@@ -407,14 +421,14 @@ async function submitLotteryWinnerName() {
     var result;
     if (CONFIG.DEMO_MODE) {
       try {
-        result = { data: demoSubmitLotteryWinnerName(currentLotteryDrawId, currentLotteryVisitorIp, winnerName), error: null };
+        result = { data: demoSubmitLotteryWinnerName(currentLotteryDrawId, currentLotterySessionId, winnerName), error: null };
       } catch (demoErr) {
         result = { data: null, error: demoErr };
       }
     } else {
       result = await supabaseClient.rpc('submit_lottery_winner_name', {
         p_draw_id: currentLotteryDrawId,
-        p_visitor_ip: currentLotteryVisitorIp,
+        p_session_id: currentLotterySessionId,
         p_winner_name: winnerName
       });
     }
@@ -487,7 +501,10 @@ function demoPerformLotteryDraw(ip, ua, sessionId) {
     throw { message: 'windows_only' };
   }
   var draws = getDemoLotteryDraws();
-  if (draws.some(function (d) { return d.visitor_ip === ip; })) {
+  if (!sessionId || sessionId === 'unknown') {
+    throw { message: 'session_required' };
+  }
+  if (draws.some(function (d) { return d.session_id === sessionId; })) {
     throw { message: 'already_drawn' };
   }
 
@@ -540,9 +557,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-function demoSubmitLotteryWinnerName(drawId, ip, name) {
+function demoSubmitLotteryWinnerName(drawId, sessionId, name) {
   var draws = getDemoLotteryDraws();
-  var idx = draws.findIndex(function (d) { return d.id === drawId && d.visitor_ip === ip; });
+  var idx = draws.findIndex(function (d) { return d.id === drawId && d.session_id === sessionId; });
   if (idx < 0) throw { message: 'draw_not_found' };
   if (!draws[idx].won && !draws[idx].consolation_coupon) throw { message: 'not_winner' };
   if (draws[idx].winner_name) throw { message: 'name_already_set' };
