@@ -251,6 +251,30 @@
       </div>
     </section>
 
+    <!-- 抽奖管理 -->
+    <section class="admin-section">
+      <h2>抽奖管理</h2>
+      <div id="lottery-admin-prizes" class="lottery-admin-prizes"></div>
+      <div class="product-table-wrapper">
+        <table class="product-table" id="lottery-admin-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>IP</th>
+              <th>是否中奖</th>
+              <th>奖项</th>
+              <th>奖品</th>
+              <th>安慰券</th>
+              <th>姓名</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="lottery-admin-tbody"></tbody>
+        </table>
+      </div>
+      <div id="lottery-admin-empty" class="empty-state hidden">暂无抽奖记录</div>
+    </section>
+
     <!-- 快速上架 -->
     <section class="admin-section quick-upload-section">
       <h2>快速上架</h2>
@@ -289,11 +313,12 @@
 
   </div>
 
-  <script src="js/config.js?v=20260605c"></script>
+  <script src="js/config.js?v=20260605f"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260605c"></script>
-  <script src="js/product-images.js?v=20260605c"></script>
-  <script src="js/browse-log.js?v=20260605c"></script>
-  <script src="js/admin.js?v=20260605c"></script>
+  <script src="js/supabase.js?v=20260605f"></script>
+  <script src="js/product-images.js?v=20260605f"></script>
+  <script src="js/browse-log.js?v=20260605f"></script>
+  <script src="js/lottery.js?v=20260605f"></script>
+  <script src="js/admin.js?v=20260605f"></script>
 </body>
 </html>

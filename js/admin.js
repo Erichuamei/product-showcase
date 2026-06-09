@@ -41,6 +41,7 @@ function login(password) {
     loadProductList('all');
     loadOrderList();
     loadBrowseLogList();
+    loadLotteryAdminList();
   } else {
     loginError.textContent = '密码错误';
     loginError.classList.add('visible');
@@ -107,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
     loadProductList('all');
     loadOrderList();
     loadBrowseLogList();
+    loadLotteryAdminList();
   }
 
 });
@@ -1716,6 +1718,96 @@ async function deleteOrder(orderId) {
       if (result.error) { alert('删除失败，请重试'); return; }
     }
     loadOrderList();
+  } catch (err) {
+    alert('删除失败，请重试');
+  }
+}
+
+// ============================================================
+// 抽奖管理（后台查看）
+// ============================================================
+
+async function loadLotteryAdminList() {
+  var tbody = document.getElementById('lottery-admin-tbody');
+  var empty = document.getElementById('lottery-admin-empty');
+  var prizesEl = document.getElementById('lottery-admin-prizes');
+  if (!tbody) return;
+
+  try {
+    var prizes;
+    var draws;
+    if (CONFIG.DEMO_MODE) {
+      prizes = typeof getDemoLotteryPrizes === 'function' ? getDemoLotteryPrizes() : [];
+      draws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
+    } else {
+      var pRes = await supabaseClient.from('lottery_prizes').select('*').order('sort_order', { ascending: true });
+      var dRes = await supabaseClient.from('lottery_draws').select('*').order('created_at', { ascending: false });
+      if (pRes.error) throw pRes.error;
+      if (dRes.error) throw dRes.error;
+      prizes = pRes.data || [];
+      draws = dRes.data || [];
+    }
+
+    if (prizesEl) {
+      prizesEl.innerHTML = prizes.map(function (p) {
+        return '<span class="lottery-prize-chip">' + p.label + '：' + p.description +
+          '（剩余 ' + p.remaining_quota + '/' + p.total_quota + '）</span>';
+      }).join('');
+    }
+
+    if (!draws.length) {
+      tbody.innerHTML = '';
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+
+    if (empty) empty.classList.add('hidden');
+    tbody.innerHTML = draws.map(function (row) {
+      return '<tr>' +
+        '<td>' + formatDateTime(row.created_at) + '</td>' +
+        '<td>' + (row.visitor_ip || '-') + '</td>' +
+        '<td>' + (row.won ? '是' : '否') + '</td>' +
+        '<td>' + (row.prize_label || '-') + '</td>' +
+        '<td>' + (row.prize_description || '-') + '</td>' +
+        '<td>' + (row.consolation_coupon || '-') + '</td>' +
+        '<td>' + (row.winner_name || '-') + '</td>' +
+        '<td><button class="btn-link danger" onclick="deleteLotteryDraw(\'' + row.id + '\')">删除</button></td>' +
+        '</tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '';
+    if (empty) {
+      empty.textContent = '抽奖记录加载失败';
+      empty.classList.remove('hidden');
+    }
+  }
+}
+
+async function deleteLotteryDraw(drawId) {
+  if (!confirm('确定要删除该抽奖记录吗？删除后该 IP 可重新抽奖。')) return;
+
+  try {
+    if (CONFIG.DEMO_MODE) {
+      var draws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
+      var draw = draws.find(function (d) { return d.id === drawId; });
+      if (draw && draw.won && draw.prize_tier && typeof getDemoLotteryPrizes === 'function') {
+        var prizes = getDemoLotteryPrizes();
+        var prize = prizes.find(function (p) { return p.tier === draw.prize_tier; });
+        if (prize && prize.remaining_quota < prize.total_quota) {
+          prize.remaining_quota++;
+          if (typeof saveDemoLotteryPrizes === 'function') saveDemoLotteryPrizes(prizes);
+        }
+      }
+      draws = draws.filter(function (d) { return d.id !== drawId; });
+      if (typeof saveDemoLotteryDraws === 'function') saveDemoLotteryDraws(draws);
+    } else {
+      var result = await supabaseClient.rpc('delete_lottery_draw', { p_draw_id: drawId });
+      if (result.error) {
+        alert('删除失败，请重试');
+        return;
+      }
+    }
+    loadLotteryAdminList();
   } catch (err) {
     alert('删除失败，请重试');
   }
