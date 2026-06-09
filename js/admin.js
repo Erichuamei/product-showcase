@@ -1727,6 +1727,159 @@ async function deleteOrder(orderId) {
 // 抽奖管理（后台查看）
 // ============================================================
 
+var allLotteryDraws = [];
+var selectedLotteryDrawIds = new Set();
+var lotterySortField = 'created_at';
+var lotterySortAsc = false;
+
+function sortAllLotteryDraws() {
+  var field = lotterySortField;
+  var asc = lotterySortAsc;
+  allLotteryDraws.sort(function (a, b) {
+    var va;
+    var vb;
+    if (field === 'created_at') {
+      va = new Date(a.created_at).getTime();
+      vb = new Date(b.created_at).getTime();
+    } else if (field === 'won') {
+      va = a.won ? 1 : 0;
+      vb = b.won ? 1 : 0;
+    } else {
+      va = (a[field] == null ? '' : String(a[field])).toLowerCase();
+      vb = (b[field] == null ? '' : String(b[field])).toLowerCase();
+    }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+function sortLotteryDrawsBy(field) {
+  if (lotterySortField === field) {
+    lotterySortAsc = !lotterySortAsc;
+  } else {
+    lotterySortField = field;
+    lotterySortAsc = field === 'created_at' ? false : true;
+  }
+  sortAllLotteryDraws();
+  renderLotteryAdminTable();
+  updateLotterySortHeaders();
+}
+
+function updateLotterySortHeaders() {
+  var headers = document.querySelectorAll('#lottery-admin-table .th-sortable');
+  headers.forEach(function (th) {
+    var field = th.getAttribute('data-sort');
+    var indicator = th.querySelector('.sort-indicator');
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (field === lotterySortField) {
+      th.classList.add(lotterySortAsc ? 'sort-asc' : 'sort-desc');
+      if (indicator) {
+        indicator.textContent = lotterySortAsc ? ' ▲' : ' ▼';
+      }
+    } else if (indicator) {
+      indicator.textContent = '';
+    }
+  });
+}
+
+function renderLotteryAdminTable() {
+  var tbody = document.getElementById('lottery-admin-tbody');
+  var empty = document.getElementById('lottery-admin-empty');
+  var table = document.getElementById('lottery-admin-table');
+  if (!tbody) return;
+
+  if (!allLotteryDraws.length) {
+    tbody.innerHTML = '';
+    if (table) table.style.display = 'none';
+    if (empty) empty.classList.remove('hidden');
+    updateLotterySelectAllCheckbox();
+    updateLotteryBatchToolbar();
+    return;
+  }
+
+  if (table) table.style.display = '';
+  if (empty) empty.classList.add('hidden');
+
+  tbody.innerHTML = allLotteryDraws.map(function (row) {
+    var checked = selectedLotteryDrawIds.has(row.id) ? ' checked' : '';
+    return '<tr>' +
+      '<td class="col-checkbox"><input type="checkbox" class="lottery-row-select" data-id="' + row.id + '"' + checked +
+        ' onchange="toggleLotteryDrawSelect(\'' + row.id + '\', this.checked)"></td>' +
+      '<td>' + formatDateTime(row.created_at) + '</td>' +
+      '<td>' + (row.visitor_ip || '-') + '</td>' +
+      '<td>' + (row.won ? '是' : '否') + '</td>' +
+      '<td>' + (row.prize_label || '-') + '</td>' +
+      '<td>' + (row.prize_description || '-') + '</td>' +
+      '<td>' + (row.consolation_coupon || '-') + '</td>' +
+      '<td>' + (row.winner_name || '-') + '</td>' +
+      '<td><button class="btn-link danger" onclick="deleteLotteryDraw(\'' + row.id + '\')">删除</button></td>' +
+      '</tr>';
+  }).join('');
+
+  updateLotterySelectAllCheckbox();
+  updateLotteryBatchToolbar();
+}
+
+function toggleLotteryDrawSelect(drawId, checked) {
+  if (checked) {
+    selectedLotteryDrawIds.add(drawId);
+  } else {
+    selectedLotteryDrawIds.delete(drawId);
+  }
+  updateLotterySelectAllCheckbox();
+  updateLotteryBatchToolbar();
+}
+
+function toggleSelectAllLotteryDraws(checked) {
+  allLotteryDraws.forEach(function (row) {
+    if (checked) {
+      selectedLotteryDrawIds.add(row.id);
+    } else {
+      selectedLotteryDrawIds.delete(row.id);
+    }
+  });
+
+  var checkboxes = document.querySelectorAll('.lottery-row-select');
+  for (var i = 0; i < checkboxes.length; i++) {
+    checkboxes[i].checked = checked;
+  }
+
+  updateLotterySelectAllCheckbox();
+  updateLotteryBatchToolbar();
+}
+
+function updateLotterySelectAllCheckbox() {
+  var selectAll = document.getElementById('lottery-select-all');
+  if (!selectAll) return;
+
+  if (!allLotteryDraws.length) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    return;
+  }
+
+  var selectedCount = allLotteryDraws.filter(function (row) {
+    return selectedLotteryDrawIds.has(row.id);
+  }).length;
+
+  selectAll.checked = selectedCount === allLotteryDraws.length;
+  selectAll.indeterminate = selectedCount > 0 && selectedCount < allLotteryDraws.length;
+}
+
+function updateLotteryBatchToolbar() {
+  var countEl = document.getElementById('lottery-selected-count');
+  var deleteBtn = document.getElementById('lottery-delete-selected-btn');
+  var count = selectedLotteryDrawIds.size;
+
+  if (countEl) {
+    countEl.textContent = '已选 ' + count + ' 条';
+  }
+  if (deleteBtn) {
+    deleteBtn.disabled = count === 0;
+  }
+}
+
 async function loadLotteryAdminList() {
   var tbody = document.getElementById('lottery-admin-tbody');
   var empty = document.getElementById('lottery-admin-empty');
@@ -1735,17 +1888,16 @@ async function loadLotteryAdminList() {
 
   try {
     var prizes;
-    var draws;
     if (CONFIG.DEMO_MODE) {
       prizes = typeof getDemoLotteryPrizes === 'function' ? getDemoLotteryPrizes() : [];
-      draws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
+      allLotteryDraws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
     } else {
       var pRes = await supabaseClient.from('lottery_prizes').select('*').order('sort_order', { ascending: true });
-      var dRes = await supabaseClient.from('lottery_draws').select('*').order('created_at', { ascending: false });
+      var dRes = await supabaseClient.from('lottery_draws').select('*');
       if (pRes.error) throw pRes.error;
       if (dRes.error) throw dRes.error;
       prizes = pRes.data || [];
-      draws = dRes.data || [];
+      allLotteryDraws = dRes.data || [];
     }
 
     if (prizesEl) {
@@ -1755,26 +1907,12 @@ async function loadLotteryAdminList() {
       }).join('');
     }
 
-    if (!draws.length) {
-      tbody.innerHTML = '';
-      if (empty) empty.classList.remove('hidden');
-      return;
-    }
-
-    if (empty) empty.classList.add('hidden');
-    tbody.innerHTML = draws.map(function (row) {
-      return '<tr>' +
-        '<td>' + formatDateTime(row.created_at) + '</td>' +
-        '<td>' + (row.visitor_ip || '-') + '</td>' +
-        '<td>' + (row.won ? '是' : '否') + '</td>' +
-        '<td>' + (row.prize_label || '-') + '</td>' +
-        '<td>' + (row.prize_description || '-') + '</td>' +
-        '<td>' + (row.consolation_coupon || '-') + '</td>' +
-        '<td>' + (row.winner_name || '-') + '</td>' +
-        '<td><button class="btn-link danger" onclick="deleteLotteryDraw(\'' + row.id + '\')">删除</button></td>' +
-        '</tr>';
-    }).join('');
+    selectedLotteryDrawIds.clear();
+    sortAllLotteryDraws();
+    renderLotteryAdminTable();
+    updateLotterySortHeaders();
   } catch (e) {
+    allLotteryDraws = [];
     tbody.innerHTML = '';
     if (empty) {
       empty.textContent = '抽奖记录加载失败';
@@ -1783,33 +1921,64 @@ async function loadLotteryAdminList() {
   }
 }
 
+async function removeLotteryDrawRecord(drawId) {
+  if (CONFIG.DEMO_MODE) {
+    var draws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
+    var draw = draws.find(function (d) { return d.id === drawId; });
+    if (draw && draw.won && draw.prize_tier && typeof getDemoLotteryPrizes === 'function') {
+      var prizes = getDemoLotteryPrizes();
+      var prize = prizes.find(function (p) { return p.tier === draw.prize_tier; });
+      if (prize && prize.remaining_quota < prize.total_quota) {
+        prize.remaining_quota++;
+        if (typeof saveDemoLotteryPrizes === 'function') saveDemoLotteryPrizes(prizes);
+      }
+    }
+    draws = draws.filter(function (d) { return d.id !== drawId; });
+    if (typeof saveDemoLotteryDraws === 'function') saveDemoLotteryDraws(draws);
+    return true;
+  }
+
+  var result = await supabaseClient.rpc('delete_lottery_draw', { p_draw_id: drawId });
+  return !result.error;
+}
+
 async function deleteLotteryDraw(drawId) {
   if (!confirm('确定要删除该抽奖记录吗？删除后该设备可重新抽奖。')) return;
 
   try {
-    if (CONFIG.DEMO_MODE) {
-      var draws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
-      var draw = draws.find(function (d) { return d.id === drawId; });
-      if (draw && draw.won && draw.prize_tier && typeof getDemoLotteryPrizes === 'function') {
-        var prizes = getDemoLotteryPrizes();
-        var prize = prizes.find(function (p) { return p.tier === draw.prize_tier; });
-        if (prize && prize.remaining_quota < prize.total_quota) {
-          prize.remaining_quota++;
-          if (typeof saveDemoLotteryPrizes === 'function') saveDemoLotteryPrizes(prizes);
-        }
-      }
-      draws = draws.filter(function (d) { return d.id !== drawId; });
-      if (typeof saveDemoLotteryDraws === 'function') saveDemoLotteryDraws(draws);
+    if (await removeLotteryDrawRecord(drawId)) {
+      loadLotteryAdminList();
     } else {
-      var result = await supabaseClient.rpc('delete_lottery_draw', { p_draw_id: drawId });
-      if (result.error) {
-        alert('删除失败，请重试');
-        return;
-      }
+      alert('删除失败，请重试');
     }
-    loadLotteryAdminList();
   } catch (err) {
     alert('删除失败，请重试');
+  }
+}
+
+async function deleteSelectedLotteryDraws() {
+  var ids = Array.from(selectedLotteryDrawIds);
+  if (ids.length === 0) {
+    alert('请先勾选要删除的抽奖记录');
+    return;
+  }
+  if (!confirm('确定要删除已选中的 ' + ids.length + ' 条抽奖记录吗？删除后对应设备可重新抽奖。')) {
+    return;
+  }
+
+  var failCount = 0;
+  try {
+    for (var i = 0; i < ids.length; i++) {
+      var ok = await removeLotteryDrawRecord(ids[i]);
+      if (!ok) failCount++;
+    }
+    selectedLotteryDrawIds.clear();
+    loadLotteryAdminList();
+    if (failCount > 0) {
+      alert('有 ' + failCount + ' 条记录删除失败，请重试');
+    }
+  } catch (err) {
+    alert('批量删除失败，请重试');
   }
 }
 

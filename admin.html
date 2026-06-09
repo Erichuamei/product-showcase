@@ -255,17 +255,24 @@
     <section class="admin-section">
       <h2>抽奖管理</h2>
       <div id="lottery-admin-prizes" class="lottery-admin-prizes"></div>
+      <div class="order-batch-bar">
+        <span id="lottery-selected-count" class="order-selected-count">已选 0 条</span>
+        <button type="button" class="btn btn-danger btn-sm" id="lottery-delete-selected-btn" onclick="deleteSelectedLotteryDraws()" disabled>批量删除</button>
+      </div>
       <div class="product-table-wrapper">
         <table class="product-table" id="lottery-admin-table">
           <thead>
             <tr>
-              <th>时间</th>
-              <th>IP</th>
-              <th>是否中奖</th>
-              <th>奖项</th>
-              <th>奖品</th>
-              <th>安慰券</th>
-              <th>姓名</th>
+              <th class="col-checkbox">
+                <input type="checkbox" id="lottery-select-all" title="全选" onchange="toggleSelectAllLotteryDraws(this.checked)">
+              </th>
+              <th class="th-sortable" data-sort="created_at" onclick="sortLotteryDrawsBy('created_at')">时间<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="visitor_ip" onclick="sortLotteryDrawsBy('visitor_ip')">IP<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="won" onclick="sortLotteryDrawsBy('won')">是否中奖<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="prize_label" onclick="sortLotteryDrawsBy('prize_label')">奖项<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="prize_description" onclick="sortLotteryDrawsBy('prize_description')">奖品<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="consolation_coupon" onclick="sortLotteryDrawsBy('consolation_coupon')">安慰券<span class="sort-indicator"></span></th>
+              <th class="th-sortable" data-sort="winner_name" onclick="sortLotteryDrawsBy('winner_name')">姓名<span class="sort-indicator"></span></th>
               <th>操作</th>
             </tr>
           </thead>
@@ -313,12 +320,12 @@
 
   </div>
 
-  <script src="js/config.js?v=20260605g"></script>
+  <script src="js/config.js?v=20260605i"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260605g"></script>
-  <script src="js/product-images.js?v=20260605g"></script>
-  <script src="js/browse-log.js?v=20260605g"></script>
-  <script src="js/lottery.js?v=20260605g"></script>
-  <script src="js/admin.js?v=20260605g"></script>
+  <script src="js/supabase.js?v=20260605i"></script>
+  <script src="js/product-images.js?v=20260605i"></script>
+  <script src="js/browse-log.js?v=20260605i"></script>
+  <script src="js/lottery.js?v=20260605i"></script>
+  <script src="js/admin.js?v=20260605i"></script>
 </body>
 </html>

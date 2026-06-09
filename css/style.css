@@ -1647,10 +1647,15 @@ body.gallery-open {
   box-shadow: 0 4px 14px rgba(255, 106, 34, 0.5);
 }
 
-.btn-lottery:disabled {
-  background: #ccc;
-  box-shadow: none;
+.btn-lottery:disabled,
+.btn-lottery.btn-lottery--soldout {
+  background: #d9d9d9 !important;
+  background-image: none !important;
+  color: #8c8c8c !important;
+  box-shadow: none !important;
+  transform: none !important;
   cursor: not-allowed;
+  opacity: 1;
 }
 
 .lottery-status-msg {
