@@ -351,6 +351,7 @@ function resetForm() {
   // 清空所有输入值
   document.getElementById('product-name').value = '';
   document.getElementById('product-price').value = '';
+  document.getElementById('product-original-price').value = '';
   document.getElementById('product-sku').value = '';
   document.getElementById('product-quantity').value = '';
   document.getElementById('product-sort-order').value = '';
@@ -409,6 +410,7 @@ async function addProduct() {
   // 获取表单值
   var name = document.getElementById('product-name').value.trim();
   var price = parseFloat(document.getElementById('product-price').value);
+  var originalPrice = parseOptionalPrice(document.getElementById('product-original-price').value);
   var sku = document.getElementById('product-sku').value.trim();
   var quantity = document.getElementById('product-quantity').value ? parseInt(document.getElementById('product-quantity').value) : 0;
   var sortOrderInput = document.getElementById('product-sort-order').value.trim();
@@ -429,6 +431,7 @@ async function addProduct() {
       .insert({
         name: name,
         price: price,
+        original_price: originalPrice,
         sku: sku,
         quantity: quantity,
         product_sku: productSku,
@@ -467,12 +470,13 @@ async function addProduct() {
 // ============================================================
 
 var QUICK_UPLOAD_FIELDS = [
-  'name', 'price', 'sku', 'quantity', 'sort_order', 'product_sku', 'remark', 'in_stock', 'image_urls'
+  'name', 'price', 'original_price', 'sku', 'quantity', 'sort_order', 'product_sku', 'remark', 'in_stock', 'image_urls'
 ];
 
 var QUICK_UPLOAD_HEADER_ALIASES = {
   name: ['商品名称', '名称', 'name'],
-  price: ['价格', '价格(元)', 'price'],
+  price: ['内购价', '价格', '价格(元)', 'price'],
+  original_price: ['原价', '参考价', 'original_price'],
   sku: ['货号'],
   quantity: ['数量', '库存', 'quantity'],
   sort_order: ['排序', '排序序号', 'sort'],
@@ -493,6 +497,7 @@ function buildQuickUploadRowHtml(values) {
   return '<tr>' +
     '<td><input type="text" class="quick-cell" data-field="name" value="' + escapeQuickAttr(values.name) + '"></td>' +
     '<td><input type="text" class="quick-cell" data-field="price" value="' + escapeQuickAttr(values.price) + '"></td>' +
+    '<td><input type="text" class="quick-cell" data-field="original_price" value="' + escapeQuickAttr(values.original_price) + '"></td>' +
     '<td><input type="text" class="quick-cell" data-field="sku" value="' + escapeQuickAttr(values.sku) + '"></td>' +
     '<td><input type="text" class="quick-cell" data-field="quantity" value="' + escapeQuickAttr(values.quantity) + '"></td>' +
     '<td><input type="text" class="quick-cell" data-field="sort_order" value="' + escapeQuickAttr(values.sort_order) + '"></td>' +
@@ -700,11 +705,18 @@ function validateQuickUploadRow(row) {
   return { skip: false, ok: true, price: price };
 }
 
+function parseOptionalPrice(value) {
+  if (value == null || String(value).trim() === '') return null;
+  var num = parseFloat(String(value).replace(/[¥￥,\s]/g, ''));
+  return isNaN(num) || num < 0 ? null : num;
+}
+
 async function insertQuickUploadProduct(row, price) {
   var imagePaths = parseQuickImageUrls(row.image_urls);
   var payload = {
     name: row.name,
     price: price,
+    original_price: parseOptionalPrice(row.original_price),
     sku: row.sku || '',
     quantity: parseQuickInt(row.quantity, 0),
     product_sku: row.product_sku || '',
@@ -820,7 +832,7 @@ function sortProductList(products) {
   products.sort(function (a, b) {
     var va;
     var vb;
-    if (field === 'price' || field === 'quantity') {
+    if (field === 'price' || field === 'quantity' || field === 'original_price') {
       va = Number(a[field]) || 0;
       vb = Number(b[field]) || 0;
     } else if (field === 'sort_order') {
@@ -851,6 +863,9 @@ function renderProductTableBody(products) {
     var imageCount = getProductImagePaths(product).length;
     var imageCountLabel = imageCount > 1 ? ' <small>(' + imageCount + '张)</small>' : '';
     var price = '¥' + Number(product.price).toFixed(2);
+    var originalPrice = product.original_price != null && product.original_price !== ''
+      ? '¥' + Number(product.original_price).toFixed(2)
+      : '-';
     var qty = product.quantity != null ? product.quantity : 0;
     var sku = product.sku || '-';
     var productSku = product.product_sku || '-';
@@ -866,6 +881,7 @@ function renderProductTableBody(products) {
       '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '">' + imageCountLabel + '</td>' +
       '<td>' + product.name + '</td>' +
       '<td>' + price + '</td>' +
+      '<td>' + originalPrice + '</td>' +
       '<td>' + (product.sort_order == null ? 9999 : product.sort_order) + '</td>' +
       '<td>' + qty + '</td>' +
       '<td>' + productSku + '</td>' +
@@ -966,6 +982,7 @@ function startEdit(product) {
   // 填充表单字段
   document.getElementById('product-name').value = product.name || '';
   document.getElementById('product-price').value = product.price || '';
+  document.getElementById('product-original-price').value = product.original_price != null ? product.original_price : '';
   document.getElementById('product-sku').value = product.sku || '';
   document.getElementById('product-quantity').value = product.quantity != null ? product.quantity : '';
   document.getElementById('product-sort-order').value = product.sort_order != null ? product.sort_order : '';
@@ -1016,6 +1033,7 @@ async function editProduct() {
   // 获取表单值
   var name = document.getElementById('product-name').value.trim();
   var price = parseFloat(document.getElementById('product-price').value);
+  var originalPrice = parseOptionalPrice(document.getElementById('product-original-price').value);
   var sku = document.getElementById('product-sku').value.trim();
   var quantity = document.getElementById('product-quantity').value ? parseInt(document.getElementById('product-quantity').value) : 0;
   var sortOrderInput = document.getElementById('product-sort-order').value.trim();
@@ -1047,6 +1065,7 @@ async function editProduct() {
       .update({
         name: name,
         price: price,
+        original_price: originalPrice,
         sku: sku,
         quantity: quantity,
         sort_order: sortOrder,

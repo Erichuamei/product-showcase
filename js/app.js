@@ -37,11 +37,52 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+var PURCHASE_BUYER_NAME_KEY = 'purchase_buyer_name';
+
+function getSavedBuyerName() {
+  try {
+    return (localStorage.getItem(PURCHASE_BUYER_NAME_KEY) || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+function saveBuyerName(name) {
+  try {
+    if (name) localStorage.setItem(PURCHASE_BUYER_NAME_KEY, name);
+  } catch (e) { /* ignore */ }
+}
+
+function getReserveButtonLabel(product) {
+  if (isProductInStock(product)) return '我很快来拿';
+  return '帮我留一件';
+}
+
+function getPurchaseSubmitLabel(product) {
+  var saved = getSavedBuyerName();
+  if (saved) {
+    return isProductInStock(product) ? '一键确认来拿' : '一键确认留货';
+  }
+  return getReserveButtonLabel(product);
+}
+
+function renderProductPriceHtml(product) {
+  var priceNum = Number(product.price);
+  var price = priceNum.toFixed(2);
+  var originalNum = product.original_price != null && product.original_price !== ''
+    ? Number(product.original_price)
+    : NaN;
+  if (!isNaN(originalNum) && originalNum > priceNum) {
+    return '<span class="product-card-price-original">¥' + originalNum.toFixed(2) + '</span>' +
+      '<span class="product-card-price-current">¥' + price + '</span>';
+  }
+  return '<span class="product-card-price-current">¥' + price + '</span>';
+}
+
 function renderProductCard(product) {
   var paths = getProductImagePaths(product);
   var coverPath = paths.length > 0 ? paths[0] : (product.image_url || '');
   var imageUrl = coverPath ? getPublicImageUrl(coverPath) : '';
-  var price = Number(product.price).toFixed(2);
   var huohao = product.sku || '-';
   var quantity = product.quantity != null ? product.quantity : 0;
   var safeName = escapeHtml(product.name);
@@ -63,8 +104,9 @@ function renderProductCard(product) {
       '</div>';
 
   var productJson = JSON.stringify(product).replace(/'/g, '&#39;');
+  var buyLabel = getReserveButtonLabel(product);
   var buyButton = quantity > 0
-    ? '<button class="btn btn-buy" onclick=\'openPurchaseModal(' + productJson + ')\'>预约</button>'
+    ? '<button class="btn btn-buy" onclick=\'openPurchaseModal(' + productJson + ')\'>' + buyLabel + '</button>'
     : '<button class="btn btn-buy" disabled>暂不可约</button>';
   var cardClass = 'product-card' + (isProductInStock(product) ? ' product-card--in-stock' : '');
 
@@ -73,7 +115,7 @@ function renderProductCard(product) {
       '<div class="product-card-body">' +
         '<div class="product-card-info">' +
           '<div class="product-card-name">' + safeName + '</div>' +
-          '<div class="product-card-price">' + price + '</div>' +
+          '<div class="product-card-price">' + renderProductPriceHtml(product) + '</div>' +
           '<div class="product-card-meta"><span>货号：' + escapeHtml(huohao) + '</span></div>' +
           '<div class="product-card-remark"' + (product.remark ? ' title="' + escapeHtml(product.remark) + '"' : '') + '>' +
             (product.remark ? escapeHtml(product.remark) : '') +
@@ -275,6 +317,49 @@ function galleryNext() {
 
 // 当前选中的购买商品
 var currentPurchaseProduct = null;
+var purchaseUseSavedName = false;
+
+function updatePurchaseBuyerUi() {
+  var saved = getSavedBuyerName();
+  var tip = document.getElementById('purchase-saved-name-tip');
+  var display = document.getElementById('purchase-saved-name-display');
+  var buyerGroup = document.getElementById('purchase-buyer-group');
+  var buyerInput = document.getElementById('purchase-buyer');
+  var submitBtn = document.getElementById('purchase-submit-btn');
+
+  purchaseUseSavedName = !!saved;
+
+  if (saved && tip && display && buyerGroup) {
+    display.textContent = saved;
+    tip.classList.remove('hidden');
+    buyerGroup.classList.add('hidden');
+    if (buyerInput) buyerInput.value = saved;
+  } else if (tip && buyerGroup) {
+    tip.classList.add('hidden');
+    buyerGroup.classList.remove('hidden');
+  }
+
+  if (submitBtn && currentPurchaseProduct) {
+    submitBtn.textContent = getPurchaseSubmitLabel(currentPurchaseProduct);
+  }
+}
+
+function useDifferentBuyerName() {
+  purchaseUseSavedName = false;
+  var tip = document.getElementById('purchase-saved-name-tip');
+  var buyerGroup = document.getElementById('purchase-buyer-group');
+  var buyerInput = document.getElementById('purchase-buyer');
+  if (tip) tip.classList.add('hidden');
+  if (buyerGroup) buyerGroup.classList.remove('hidden');
+  if (buyerInput) {
+    buyerInput.value = '';
+    buyerInput.focus();
+  }
+  if (currentPurchaseProduct) {
+    var submitBtn = document.getElementById('purchase-submit-btn');
+    if (submitBtn) submitBtn.textContent = getReserveButtonLabel(currentPurchaseProduct);
+  }
+}
 
 /**
  * 打开购买模态框
@@ -293,16 +378,11 @@ function openPurchaseModal(product) {
   var purchaseMessage = document.getElementById('purchase-message');
   var submitBtn = document.getElementById('purchase-submit-btn');
 
-  // 填充商品信息
   productName.textContent = product.name;
   productIdInput.value = product.id;
-
-  // 设置数量输入框
   quantityInput.value = 1;
   quantityInput.max = product.quantity;
 
-  // 清空表单
-  buyerInput.value = '';
   var remarkInput = document.getElementById('purchase-remark');
   if (remarkInput) remarkInput.value = '';
   buyerError.textContent = '';
@@ -312,9 +392,8 @@ function openPurchaseModal(product) {
   purchaseMessage.textContent = '';
   purchaseMessage.classList.remove('visible');
   submitBtn.disabled = false;
-  submitBtn.textContent = '确认预约';
 
-  // 显示模态框
+  updatePurchaseBuyerUi();
   modal.classList.remove('hidden');
 }
 
@@ -331,8 +410,8 @@ function closePurchaseModal() {
 
   modal.classList.add('hidden');
   currentPurchaseProduct = null;
+  purchaseUseSavedName = false;
 
-  // 清空表单
   buyerInput.value = '';
   quantityInput.value = 1;
   var remarkInputClose = document.getElementById('purchase-remark');
@@ -415,12 +494,13 @@ async function submitPurchase() {
   purchaseMessage.textContent = '';
   purchaseMessage.classList.remove('visible');
 
-  var buyerName = buyerInput.value.trim();
+  var buyerName = purchaseUseSavedName ? getSavedBuyerName() : buyerInput.value.trim();
+  if (!buyerName && buyerInput) buyerName = buyerInput.value.trim();
   var remarkInput = document.getElementById('purchase-remark');
   var buyerRemark = remarkInput ? remarkInput.value.trim() : '';
   var qty = parseInt(quantityInput.value);
+  var submitLabel = currentPurchaseProduct ? getPurchaseSubmitLabel(currentPurchaseProduct) : '帮我留一件';
 
-  // 校验购买人姓名
   if (!buyerName) {
     buyerError.textContent = '请填写预约人姓名';
     buyerError.classList.add('visible');
@@ -465,11 +545,11 @@ async function submitPurchase() {
       }
       purchaseError.classList.add('visible');
       submitBtn.disabled = false;
-      submitBtn.textContent = '确认预约';
+      submitBtn.textContent = submitLabel;
       return;
     }
 
-    // 购买成功
+    saveBuyerName(buyerName);
     purchaseMessage.textContent = '预约成功';
     purchaseMessage.classList.add('visible');
 
@@ -482,6 +562,6 @@ async function submitPurchase() {
     purchaseError.textContent = '预约失败，请重试';
     purchaseError.classList.add('visible');
     submitBtn.disabled = false;
-    submitBtn.textContent = '确认预约';
+    submitBtn.textContent = submitLabel;
   }
 }

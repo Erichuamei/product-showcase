@@ -110,6 +110,20 @@ select {
   color: var(--color-text);
 }
 
+.page-header--showcase .container {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.page-header-subtitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
 /* ============================================
    展示页面 — 商品卡片网格
    ============================================ */
@@ -404,22 +418,28 @@ body.gallery-open {
 
 .product-card-price {
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.product-card-price-original {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-light);
+  text-decoration: line-through;
+}
+
+.product-card-price-current {
   font-size: 17px;
   font-weight: 700;
   color: var(--color-danger);
-  line-height: 1.2;
   letter-spacing: -0.02em;
 }
 
-.product-card-price::before {
-  content: "¥";
-  font-size: 12px;
-  margin-right: 2px;
-  font-weight: 600;
-}
-
-.product-card-meta,
-.product-card-remark {
+.product-card-meta {
   margin: 0;
   min-height: 0;
   width: 100%;
@@ -431,13 +451,24 @@ body.gallery-open {
   white-space: nowrap;
 }
 
-.product-card-remark:empty::after {
-  content: "\00a0";
+.product-card-remark {
+  margin: 0;
+  min-height: 0;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.product-card-remark::before {
-  content: "说明 ";
-  color: var(--color-text-light);
+.product-card-remark:empty::after {
+  content: "\00a0";
 }
 
 .product-card-actions {
@@ -1417,6 +1448,30 @@ body.gallery-open {
 
 .modal-close:hover {
   color: var(--color-text);
+}
+
+.purchase-saved-name-tip {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.purchase-saved-name-tip.hidden {
+  display: none;
+}
+
+.purchase-saved-name-tip strong {
+  color: var(--color-text);
+  margin: 0 4px;
+}
+
+.purchase-saved-name-tip .btn-link {
+  margin-left: 8px;
 }
 
 .modal-body {

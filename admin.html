@@ -58,8 +58,13 @@
               <span class="field-error"></span>
             </div>
             <div class="form-group">
-              <label>价格(元)<span class="required">*</span></label>
+              <label>内购价(元)<span class="required">*</span></label>
               <input type="number" id="product-price" step="0.01" placeholder="0.00">
+              <span class="field-error"></span>
+            </div>
+            <div class="form-group">
+              <label>原价(元)</label>
+              <input type="number" id="product-original-price" step="0.01" min="0" placeholder="选填，展示划线价">
               <span class="field-error"></span>
             </div>
           </div>
@@ -131,7 +136,8 @@
             <tr>
               <th>图片</th>
               <th class="th-sortable" data-product-sort="name" onclick="sortProductsBy('name')">商品名称<span class="product-sort-indicator"></span></th>
-              <th class="th-sortable" data-product-sort="price" onclick="sortProductsBy('price')">价格<span class="product-sort-indicator"></span></th>
+              <th class="th-sortable" data-product-sort="price" onclick="sortProductsBy('price')">内购价<span class="product-sort-indicator"></span></th>
+              <th class="th-sortable" data-product-sort="original_price" onclick="sortProductsBy('original_price')">原价<span class="product-sort-indicator"></span></th>
               <th class="th-sortable" data-product-sort="sort_order" onclick="sortProductsBy('sort_order')">排序<span class="product-sort-indicator"></span></th>
               <th class="th-sortable" data-product-sort="quantity" onclick="sortProductsBy('quantity')">库存<span class="product-sort-indicator"></span></th>
               <th class="th-sortable" data-product-sort="product_sku" onclick="sortProductsBy('product_sku')">SKU<span class="product-sort-indicator"></span></th>
@@ -250,7 +256,7 @@
       <h2>快速上架</h2>
       <p class="quick-upload-hint">
         从 Excel 复制表格后粘贴到下方文本框，点击「填入表格」；也可直接在表格里编辑。
-        列顺序：<strong>商品名称、价格、货号、数量、排序、SKU、说明、现货(是/否)、图片链接</strong>（名称与价格为必填；图片可多张，用英文分号分隔；无图可先上架，稍后补图）
+        列顺序：<strong>商品名称、内购价、原价、货号、数量、排序、SKU、说明、现货(是/否)、图片链接</strong>（名称与内购价为必填；原价选填；图片可多张，用英文分号分隔；无图可先上架，稍后补图）
       </p>
       <div id="quick-upload-message" class="message"></div>
       <textarea id="quick-upload-paste" class="quick-upload-paste" rows="4" placeholder="在此粘贴 Excel 内容（Tab 分隔）…"></textarea>
@@ -265,7 +271,8 @@
           <thead>
             <tr>
               <th>商品名称<span class="required">*</span></th>
-              <th>价格<span class="required">*</span></th>
+              <th>内购价<span class="required">*</span></th>
+              <th>原价</th>
               <th>货号</th>
               <th>数量</th>
               <th>排序</th>
@@ -282,11 +289,11 @@
 
   </div>
 
-  <script src="js/config.js?v=20260605a"></script>
+  <script src="js/config.js?v=20260605c"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260605a"></script>
-  <script src="js/product-images.js?v=20260605a"></script>
-  <script src="js/browse-log.js?v=20260605a"></script>
-  <script src="js/admin.js?v=20260605a"></script>
+  <script src="js/supabase.js?v=20260605c"></script>
+  <script src="js/product-images.js?v=20260605c"></script>
+  <script src="js/browse-log.js?v=20260605c"></script>
+  <script src="js/admin.js?v=20260605c"></script>
 </body>
 </html>
