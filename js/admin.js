@@ -789,6 +789,8 @@ async function submitQuickUpload() {
 var currentFilter = 'all';
 // 当前商品列表（用于上移/下移交换排序值）
 var currentProductList = [];
+var productSortField = 'sort_order';
+var productSortAsc = true;
 
 
 /**
@@ -812,6 +814,104 @@ function getImageUrl(imagePath) {
   return CONFIG.SUPABASE_URL + '/storage/v1/object/public/' + CONFIG.STORAGE_BUCKET + '/' + imagePath;
 }
 
+function sortProductList(products) {
+  var field = productSortField;
+  var asc = productSortAsc;
+  products.sort(function (a, b) {
+    var va;
+    var vb;
+    if (field === 'price' || field === 'quantity') {
+      va = Number(a[field]) || 0;
+      vb = Number(b[field]) || 0;
+    } else if (field === 'sort_order') {
+      va = a.sort_order == null ? 9999 : Number(a.sort_order);
+      vb = b.sort_order == null ? 9999 : Number(b.sort_order);
+    } else if (field === 'in_stock') {
+      va = isProductInStock(a) ? 1 : 0;
+      vb = isProductInStock(b) ? 1 : 0;
+    } else if (field === 'status') {
+      va = a.status === 'active' ? 0 : 1;
+      vb = b.status === 'active' ? 0 : 1;
+    } else {
+      va = (a[field] == null ? '' : String(a[field])).toLowerCase();
+      vb = (b[field] == null ? '' : String(b[field])).toLowerCase();
+    }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+function renderProductTableBody(products) {
+  var tbody = document.getElementById('product-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = products.map(function (product) {
+    var imageUrl = getImageUrl(getProductCoverPath(product));
+    var imageCount = getProductImagePaths(product).length;
+    var imageCountLabel = imageCount > 1 ? ' <small>(' + imageCount + '张)</small>' : '';
+    var price = '¥' + Number(product.price).toFixed(2);
+    var qty = product.quantity != null ? product.quantity : 0;
+    var sku = product.sku || '-';
+    var productSku = product.product_sku || '-';
+    var statusText = product.status === 'active' ? '在售' : '已下架';
+    var statusClass = 'status-badge ' + product.status;
+    var toggleLabel = product.status === 'active' ? '下架' : '上架';
+    var toggleStatus = product.status === 'active' ? 'inactive' : 'active';
+    var stockCell = isProductInStock(product)
+      ? '<span class="stock-badge stock-badge--yes">有现货</span>'
+      : '<span class="stock-badge stock-badge--no">无</span>';
+
+    return '<tr>' +
+      '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '">' + imageCountLabel + '</td>' +
+      '<td>' + product.name + '</td>' +
+      '<td>' + price + '</td>' +
+      '<td>' + (product.sort_order == null ? 9999 : product.sort_order) + '</td>' +
+      '<td>' + qty + '</td>' +
+      '<td>' + productSku + '</td>' +
+      '<td>' + sku + '</td>' +
+      '<td><span class="cell-truncate" data-tip="' + (product.remark || '').replace(/"/g, '&quot;') + '">' + (product.remark || '-') + '</span></td>' +
+      '<td>' + stockCell + '</td>' +
+      '<td><span class="' + statusClass + '">' + statusText + '</span></td>' +
+      '<td>' +
+        '<button class="btn-link" onclick="moveProductUp(\'' + product.id + '\')">上移</button>' +
+        '<button class="btn-link" onclick="moveProductDown(\'' + product.id + '\')">下移</button>' +
+        '<button class="btn-link" onclick=\'startEdit(' + JSON.stringify(product).replace(/'/g, "&#39;") + ')\'>编辑</button>' +
+        '<button class="btn-link" onclick="toggleProductStatus(\'' + product.id + '\', \'' + toggleStatus + '\')">' + toggleLabel + '</button>' +
+        '<button class="btn-link danger" onclick="deleteProduct(\'' + product.id + '\')">删除</button>' +
+      '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function sortProductsBy(field) {
+  if (productSortField === field) {
+    productSortAsc = !productSortAsc;
+  } else {
+    productSortField = field;
+    productSortAsc = true;
+  }
+  currentProductList = currentProductList.slice();
+  sortProductList(currentProductList);
+  renderProductTableBody(currentProductList);
+  updateProductSortHeaders();
+}
+
+function updateProductSortHeaders() {
+  var headers = document.querySelectorAll('#product-table .th-sortable');
+  headers.forEach(function (th) {
+    var field = th.getAttribute('data-product-sort');
+    var indicator = th.querySelector('.product-sort-indicator');
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (field === productSortField) {
+      th.classList.add(productSortAsc ? 'sort-asc' : 'sort-desc');
+      if (indicator) indicator.textContent = productSortAsc ? ' ▲' : ' ▼';
+    } else if (indicator) {
+      indicator.textContent = '';
+    }
+  });
+}
+
 /**
  * 加载商品列表并按状态筛选
  * @param {string} filter - 筛选条件：'all' | 'active' | 'inactive'
@@ -824,11 +924,7 @@ async function loadProductList(filter) {
   var table = document.getElementById('product-table');
 
   try {
-    var query = supabaseClient
-      .from('products')
-      .select('*')
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+    var query = supabaseClient.from('products').select('*');
 
     if (filter === 'active' || filter === 'inactive') {
       query = query.eq('status', filter);
@@ -837,10 +933,10 @@ async function loadProductList(filter) {
     var result = await query;
     if (result.error) throw result.error;
 
-    var data = result.data;
-    currentProductList = data || [];
+    var data = result.data || [];
 
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
+      currentProductList = [];
       tbody.innerHTML = '';
       table.style.display = 'none';
       emptyState.classList.remove('hidden');
@@ -850,42 +946,10 @@ async function loadProductList(filter) {
     table.style.display = '';
     emptyState.classList.add('hidden');
 
-    tbody.innerHTML = data.map(function (product) {
-      var imageUrl = getImageUrl(getProductCoverPath(product));
-      var imageCount = getProductImagePaths(product).length;
-      var imageCountLabel = imageCount > 1 ? ' <small>(' + imageCount + '张)</small>' : '';
-      var price = '¥' + Number(product.price).toFixed(2);
-      var qty = product.quantity != null ? product.quantity : 0;
-      var sku = product.sku || '-';
-      var productSku = product.product_sku || '-';
-      var statusText = product.status === 'active' ? '在售' : '已下架';
-      var statusClass = 'status-badge ' + product.status;
-      var toggleLabel = product.status === 'active' ? '下架' : '上架';
-      var toggleStatus = product.status === 'active' ? 'inactive' : 'active';
-      var stockCell = isProductInStock(product)
-        ? '<span class="stock-badge stock-badge--yes">有现货</span>'
-        : '<span class="stock-badge stock-badge--no">无</span>';
-
-      return '<tr>' +
-        '<td><img src="' + imageUrl + '" class="thumb" width="48" height="48" alt="' + product.name + '">' + imageCountLabel + '</td>' +
-        '<td>' + product.name + '</td>' +
-        '<td>' + price + '</td>' +
-        '<td>' + (product.sort_order == null ? 9999 : product.sort_order) + '</td>' +
-        '<td>' + qty + '</td>' +
-        '<td>' + productSku + '</td>' +
-        '<td>' + sku + '</td>' +
-        '<td><span class="cell-truncate" data-tip="' + (product.remark || '').replace(/"/g, '&quot;') + '">' + (product.remark || '-') + '</span></td>' +
-        '<td>' + stockCell + '</td>' +
-        '<td><span class="' + statusClass + '">' + statusText + '</span></td>' +
-        '<td>' +
-          '<button class="btn-link" onclick="moveProductUp(\'' + product.id + '\')">上移</button>' +
-          '<button class="btn-link" onclick="moveProductDown(\'' + product.id + '\')">下移</button>' +
-          '<button class="btn-link" onclick=\'startEdit(' + JSON.stringify(product).replace(/'/g, "&#39;") + ')\'>编辑</button>' +
-          '<button class="btn-link" onclick="toggleProductStatus(\'' + product.id + '\', \'' + toggleStatus + '\')">' + toggleLabel + '</button>' +
-          '<button class="btn-link danger" onclick="deleteProduct(\'' + product.id + '\')">删除</button>' +
-        '</td>' +
-        '</tr>';
-    }).join('');
+    currentProductList = data.slice();
+    sortProductList(currentProductList);
+    renderProductTableBody(currentProductList);
+    updateProductSortHeaders();
 
   } catch (err) {
     tbody.innerHTML = '';
