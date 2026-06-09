@@ -8,6 +8,10 @@ var loadedProducts = [];
  * @returns {string} 完整的公开访问 URL
  */
 function getPublicImageUrl(imagePath) {
+  if (!imagePath) return '';
+  if (/^https?:\/\//i.test(String(imagePath))) {
+    return String(imagePath);
+  }
   if (CONFIG.DEMO_MODE) {
     // 本地测试模式：从 localStorage 读取 base64 图片
     try {
@@ -117,8 +121,13 @@ async function loadProducts() {
   }
 }
 
-// 页面加载完成后自动加载商品
-document.addEventListener('DOMContentLoaded', loadProducts);
+// 页面加载完成后自动加载商品并记录访问
+document.addEventListener('DOMContentLoaded', function () {
+  loadProducts();
+  if (typeof logBrowsePageView === 'function') {
+    logBrowsePageView();
+  }
+});
 
 // ============================================================
 // 商品大图浏览
@@ -216,6 +225,10 @@ function openImageGallery(productId, startIndex) {
   galleryIndex = startIndex || 0;
   if (galleryIndex < 0) galleryIndex = 0;
   if (galleryIndex >= galleryPaths.length) galleryIndex = galleryPaths.length - 1;
+
+  if (typeof logBrowseProductEvent === 'function') {
+    logBrowseProductEvent('view_product', product);
+  }
 
   var modal = document.getElementById('gallery-modal');
   if (modal) {

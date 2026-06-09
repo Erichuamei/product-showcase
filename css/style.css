@@ -738,6 +738,172 @@ body.gallery-open {
   font-size: 13px;
 }
 
+/* ---------- 快速上架 ---------- */
+.quick-upload-section h2 {
+  margin-bottom: 8px;
+}
+
+.quick-upload-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.quick-upload-paste {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  resize: vertical;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.quick-upload-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quick-upload-table-wrapper {
+  overflow-x: auto;
+}
+
+.quick-upload-table .quick-cell {
+  width: 100%;
+  min-width: 72px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.quick-upload-table .quick-cell:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+}
+
+.quick-upload-table .quick-cell-narrow {
+  min-width: 52px;
+  max-width: 72px;
+}
+
+.quick-upload-table td {
+  padding: 6px 4px;
+  vertical-align: middle;
+}
+
+.quick-upload-table th {
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/* ---------- 浏览记录 ---------- */
+.browse-sku-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.browse-sku-filter.hidden {
+  display: none;
+}
+
+.browse-sku-filter-input {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.browse-batch-bar {
+  margin-bottom: 12px;
+}
+
+.browse-table.browse-view-page_view .browse-col-product {
+  display: none;
+}
+
+.browse-table.browse-view-view_product .browse-col-product {
+  display: table-cell;
+}
+
+.browse-pageview-mode {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.browse-pageview-mode.hidden {
+  display: none;
+}
+
+.browse-detail-wrap.hidden,
+.browse-summary-wrap.hidden {
+  display: none;
+}
+
+.browse-summary-table td {
+  vertical-align: middle;
+}
+
+.browse-peak-hours {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: normal;
+  min-width: 160px;
+}
+
+.browse-hour-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 360px;
+  height: 72px;
+  padding-top: 4px;
+}
+
+.browse-hour-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 10px;
+}
+
+.browse-hour-bar {
+  width: 100%;
+  max-width: 14px;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #e8e8e8;
+}
+
+.browse-hour-bar--active {
+  background: linear-gradient(180deg, #40a9ff 0%, #1890ff 100%);
+}
+
+.browse-hour-label {
+  font-size: 9px;
+  color: var(--color-text-light);
+  line-height: 1;
+  margin-top: 2px;
+}
+
 .image-preview-list {
   display: flex;
   flex-wrap: wrap;

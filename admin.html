@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 内购商品展示</title>
-  <link rel="stylesheet" href="css/style.css?v=20260604u">
+  <link rel="stylesheet" href="css/style.css?v=20260604w">
 </head>
 <body>
 
@@ -186,12 +186,107 @@
       </div>
     </section>
 
+    <!-- 浏览记录 -->
+    <section class="admin-section">
+      <h2>浏览记录</h2>
+      <div class="filter-tabs browse-filter-tabs">
+        <span class="filter-tab active" data-browse-filter="page_view" onclick="filterBrowseLogs('page_view')">打开页面</span>
+        <span class="filter-tab" data-browse-filter="view_product" onclick="filterBrowseLogs('view_product')">查看大图</span>
+      </div>
+      <div id="browse-pageview-mode-bar" class="filter-tabs browse-pageview-mode">
+        <span class="filter-tab active" data-pageview-mode="summary" onclick="setBrowsePageViewMode('summary')">汇总</span>
+        <span class="filter-tab" data-pageview-mode="detail" onclick="setBrowsePageViewMode('detail')">明细</span>
+      </div>
+      <div id="browse-sku-filter-bar" class="browse-sku-filter hidden">
+        <input type="text" id="browse-sku-filter-input" class="browse-sku-filter-input" placeholder="输入货号，查看该商品所有查看记录" onkeydown="if(event.key==='Enter')applyBrowseSkuFilter()">
+        <button type="button" class="btn btn-default btn-sm" onclick="applyBrowseSkuFilter()">筛选</button>
+        <button type="button" class="btn btn-default btn-sm" onclick="clearBrowseSkuFilter()">清除</button>
+      </div>
+      <div class="order-batch-bar browse-batch-bar">
+        <button type="button" class="btn btn-danger btn-sm" onclick="clearAllBrowseLogs()">清空记录</button>
+      </div>
+      <div id="browse-detail-wrap" class="browse-detail-wrap hidden">
+        <div class="product-table-wrapper">
+          <table class="product-table browse-table browse-view-page_view" id="browse-table">
+            <thead>
+              <tr>
+                <th class="browse-col-time th-sortable" data-browse-sort="created_at" onclick="sortBrowseLogsBy('created_at')">时间<span class="browse-sort-indicator"></span></th>
+                <th class="browse-col-product th-sortable" data-browse-sort="product_name" onclick="sortBrowseLogsBy('product_name')">商品名称<span class="browse-sort-indicator"></span></th>
+                <th class="browse-col-product th-sortable" data-browse-sort="product_sku" onclick="sortBrowseLogsBy('product_sku')">货号<span class="browse-sort-indicator"></span></th>
+                <th class="browse-col-ip">IP</th>
+                <th class="browse-col-device">设备</th>
+                <th class="browse-col-action">操作</th>
+              </tr>
+            </thead>
+            <tbody id="browse-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="browse-summary-wrap" class="browse-summary-wrap">
+        <div class="product-table-wrapper">
+          <table class="product-table browse-summary-table" id="browse-summary-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>总访问</th>
+                <th>高峰时段</th>
+                <th>24 小时分布</th>
+              </tr>
+            </thead>
+            <tbody id="browse-summary-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="browse-empty" class="empty-state hidden">暂无浏览记录</div>
+      <div id="browse-pagination" class="pagination hidden">
+        <button class="btn btn-default btn-sm" id="browse-prev-btn" onclick="changeBrowsePage(-1)">上一页</button>
+        <span id="browse-page-info"></span>
+        <button class="btn btn-default btn-sm" id="browse-next-btn" onclick="changeBrowsePage(1)">下一页</button>
+      </div>
+    </section>
+
+    <!-- 快速上架 -->
+    <section class="admin-section quick-upload-section">
+      <h2>快速上架</h2>
+      <p class="quick-upload-hint">
+        从 Excel 复制表格后粘贴到下方文本框，点击「填入表格」；也可直接在表格里编辑。
+        列顺序：<strong>商品名称、价格、货号、数量、排序、SKU、说明、现货(是/否)、图片链接</strong>（名称与价格为必填；图片可多张，用英文分号分隔；无图可先上架，稍后补图）
+      </p>
+      <div id="quick-upload-message" class="message"></div>
+      <textarea id="quick-upload-paste" class="quick-upload-paste" rows="4" placeholder="在此粘贴 Excel 内容（Tab 分隔）…"></textarea>
+      <div class="quick-upload-toolbar">
+        <button type="button" class="btn btn-default btn-sm" onclick="fillQuickUploadFromPaste()">填入表格</button>
+        <button type="button" class="btn btn-default btn-sm" onclick="addQuickUploadRows(5)">添加 5 行</button>
+        <button type="button" class="btn btn-default btn-sm" onclick="clearQuickUploadTable()">清空表格</button>
+        <button type="button" class="btn btn-primary btn-sm" id="quick-upload-submit-btn" onclick="submitQuickUpload()">批量上架</button>
+      </div>
+      <div class="product-table-wrapper quick-upload-table-wrapper">
+        <table class="product-table quick-upload-table" id="quick-upload-table">
+          <thead>
+            <tr>
+              <th>商品名称<span class="required">*</span></th>
+              <th>价格<span class="required">*</span></th>
+              <th>货号</th>
+              <th>数量</th>
+              <th>排序</th>
+              <th>SKU</th>
+              <th>说明</th>
+              <th>现货</th>
+              <th>图片链接</th>
+            </tr>
+          </thead>
+          <tbody id="quick-upload-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
   </div>
 
-  <script src="js/config.js?v=20260604u"></script>
+  <script src="js/config.js?v=20260604z"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260604u"></script>
-  <script src="js/product-images.js?v=20260604u"></script>
-  <script src="js/admin.js?v=20260604u"></script>
+  <script src="js/supabase.js?v=20260604z"></script>
+  <script src="js/product-images.js?v=20260604z"></script>
+  <script src="js/browse-log.js?v=20260604z"></script>
+  <script src="js/admin.js?v=20260604z"></script>
 </body>
 </html>
