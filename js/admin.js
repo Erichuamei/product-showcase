@@ -2325,6 +2325,25 @@ function sortBrowseLogsList(logs) {
   });
 }
 
+async function fetchAllBrowseLogsFromDb() {
+  var all = [];
+  var pageSize = 1000;
+  var from = 0;
+  while (true) {
+    var result = await supabaseClient
+      .from('browse_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (result.error) throw result.error;
+    var batch = result.data || [];
+    all = all.concat(batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function loadBrowseLogList() {
   var tbody = document.getElementById('browse-tbody');
   var table = document.getElementById('browse-table');
@@ -2336,11 +2355,7 @@ async function loadBrowseLogList() {
     if (CONFIG.DEMO_MODE) {
       allBrowseLogs = getDemoBrowseLogs();
     } else {
-      var result = await supabaseClient
-        .from('browse_logs')
-        .select('*');
-      if (result.error) throw result.error;
-      allBrowseLogs = result.data || [];
+      allBrowseLogs = await fetchAllBrowseLogsFromDb();
     }
     allBrowseLogs = allBrowseLogs.filter(function (log) {
       return log.event_type === 'page_view' || log.event_type === 'view_product';

@@ -1,7 +1,7 @@
 // 配置模块 — 集中管理所有配置项
 const CONFIG = {
   // 静态资源版本号（更新 CSS/JS 后递增，避免浏览器缓存旧文件）
-  ASSET_VERSION: '20260605k',
+  ASSET_VERSION: '20260610a',
 
   // 每个商品最多上传图片张数
   MAX_PRODUCT_IMAGES: 9,
