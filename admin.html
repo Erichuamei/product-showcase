@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 内购商品展示</title>
-  <link rel="stylesheet" href="css/style.css?v=20260604w">
+  <link rel="stylesheet" href="css/style.css?v=20260610d">
 </head>
 <body>
 
@@ -29,7 +29,7 @@
     </header>
 
     <!-- 添加新商品 -->
-    <section class="admin-section add-product-section">
+    <section class="admin-section add-product-section" data-admin-section="add-product">
       <h2>添加新商品</h2>
 
       <!-- 成功/错误提示 -->
@@ -119,7 +119,7 @@
     </section>
 
     <!-- 商品列表 -->
-    <section class="admin-section">
+    <section class="admin-section" data-admin-section="products">
       <h2>商品列表</h2>
 
       <!-- 筛选标签 -->
@@ -157,7 +157,7 @@
     </section>
 
     <!-- 购买记录 -->
-    <section class="admin-section">
+    <section class="admin-section" data-admin-section="orders">
       <h2>购买记录</h2>
       <div class="order-batch-bar">
         <span id="order-selected-count" class="order-selected-count">已选 0 条</span>
@@ -193,7 +193,7 @@
     </section>
 
     <!-- 浏览记录 -->
-    <section class="admin-section" id="browse-log-section">
+    <section class="admin-section" id="browse-log-section" data-admin-section="browse-logs">
       <h2>浏览记录</h2>
       <div class="filter-tabs browse-filter-tabs">
         <span class="filter-tab active" data-browse-filter="page_view" onclick="filterBrowseLogs('page_view')">打开页面</span>
@@ -249,7 +249,7 @@
     </section>
 
     <!-- 抽奖管理 -->
-    <section class="admin-section">
+    <section class="admin-section" data-admin-section="lottery">
       <h2>抽奖管理</h2>
       <div class="lottery-admin-toolbar">
         <span class="lottery-admin-toolbar-label">前台抽奖开关</span>
@@ -308,7 +308,7 @@
     </section>
 
     <!-- 快速上架 -->
-    <section class="admin-section quick-upload-section">
+    <section class="admin-section quick-upload-section" data-admin-section="quick-upload">
       <h2>快速上架</h2>
       <p class="quick-upload-hint">
         从 Excel 复制表格后粘贴到下方文本框，点击「填入表格」；也可直接在表格里编辑。
@@ -345,12 +345,12 @@
 
   </div>
 
-  <script src="js/config.js?v=20260610c"></script>
+  <script src="js/config.js?v=20260610d"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js?v=20260610c"></script>
-  <script src="js/product-images.js?v=20260610c"></script>
-  <script src="js/browse-log.js?v=20260610c"></script>
-  <script src="js/lottery.js?v=20260610c"></script>
-  <script src="js/admin.js?v=20260610c"></script>
+  <script src="js/supabase.js?v=20260610d"></script>
+  <script src="js/product-images.js?v=20260610d"></script>
+  <script src="js/browse-log.js?v=20260610d"></script>
+  <script src="js/lottery.js?v=20260610d"></script>
+  <script src="js/admin.js?v=20260610d"></script>
 </body>
 </html>

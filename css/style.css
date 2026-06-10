@@ -562,6 +562,51 @@ body.gallery-open {
   border-bottom: 1px solid var(--color-border-light);
 }
 
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.admin-section-header h2 {
+  margin: 0;
+  padding: 0;
+  border: none;
+  flex: 1;
+}
+
+.admin-section-toggle {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.admin-section-toggle:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.admin-section.is-collapsed .admin-section-header {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.admin-section.is-collapsed .admin-section-body {
+  display: none;
+}
+
 /* ============================================
    管理后台 — 添加/编辑商品表单
    ============================================ */

@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   initQuickUploadTable();
+  initAdminSectionCollapse();
 
   // 登录成功后加载后台数据
   if (isLoggedIn) {
@@ -106,6 +107,107 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
 });
+
+var ADMIN_SECTION_STATE_KEY = 'admin_section_collapsed';
+
+function getAdminSectionCollapsedMap() {
+  try {
+    return JSON.parse(localStorage.getItem(ADMIN_SECTION_STATE_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+function isAdminSectionCollapsed(sectionId) {
+  return !!getAdminSectionCollapsedMap()[sectionId];
+}
+
+function setAdminSectionCollapsed(sectionId, collapsed) {
+  var map = getAdminSectionCollapsedMap();
+  if (collapsed) map[sectionId] = true;
+  else delete map[sectionId];
+  try {
+    localStorage.setItem(ADMIN_SECTION_STATE_KEY, JSON.stringify(map));
+  } catch (e) { /* ignore */ }
+}
+
+function updateAdminSectionToggleUi(section, collapsed) {
+  var toggleBtn = section.querySelector('.admin-section-toggle');
+  if (toggleBtn) {
+    toggleBtn.textContent = collapsed ? '展开' : '收起';
+    toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+  section.classList.toggle('is-collapsed', collapsed);
+}
+
+function applyAdminSectionCollapse(section, sectionId, collapsed) {
+  updateAdminSectionToggleUi(section, collapsed);
+}
+
+function onAdminSectionExpanded(sectionId) {
+  if (sectionId === 'browse-logs' && !browseLogsLoaded) {
+    browseLogsLoaded = true;
+    loadBrowseLogList();
+  }
+}
+
+function toggleAdminSection(sectionId) {
+  var section = document.querySelector('[data-admin-section="' + sectionId + '"]');
+  if (!section) return;
+  var collapsed = !isAdminSectionCollapsed(sectionId);
+  setAdminSectionCollapsed(sectionId, collapsed);
+  applyAdminSectionCollapse(section, sectionId, collapsed);
+  if (!collapsed) {
+    onAdminSectionExpanded(sectionId);
+  }
+}
+
+function initAdminSectionCollapse() {
+  var sections = document.querySelectorAll('#admin-content .admin-section[data-admin-section]');
+  sections.forEach(function (section) {
+    var sectionId = section.getAttribute('data-admin-section');
+    if (!sectionId || section.querySelector('.admin-section-header')) return;
+
+    var h2 = section.querySelector(':scope > h2');
+    if (!h2) return;
+
+    var header = document.createElement('div');
+    header.className = 'admin-section-header';
+    section.insertBefore(header, h2);
+    header.appendChild(h2);
+
+    var toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'admin-section-toggle';
+    toggleBtn.textContent = '收起';
+    toggleBtn.setAttribute('aria-label', '展开或收起本区域');
+    toggleBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleAdminSection(sectionId);
+    });
+    header.appendChild(toggleBtn);
+
+    header.addEventListener('click', function () {
+      toggleAdminSection(sectionId);
+    });
+
+    var body = document.createElement('div');
+    body.className = 'admin-section-body';
+    var node = header.nextSibling;
+    while (node) {
+      var next = node.nextSibling;
+      body.appendChild(node);
+      node = next;
+    }
+    section.appendChild(body);
+
+    var collapsed = isAdminSectionCollapsed(sectionId);
+    applyAdminSectionCollapse(section, sectionId, collapsed);
+    if (!collapsed) {
+      onAdminSectionExpanded(sectionId);
+    }
+  });
+}
 
 var browseLogsLoaded = false;
 var lotteryDeletingIds = new Set();
@@ -118,6 +220,10 @@ function initAdminDashboard() {
 }
 
 function initBrowseLogLazyLoad() {
+  if (browseLogsLoaded) return;
+  if (isAdminSectionCollapsed('browse-logs')) {
+    return;
+  }
   var section = document.getElementById('browse-log-section');
   if (!section || typeof IntersectionObserver === 'undefined') {
     setTimeout(function () {
