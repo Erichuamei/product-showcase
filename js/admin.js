@@ -2171,7 +2171,6 @@ var allBrowseLogs = [];
 var browsePage = 1;
 var browsePageSize = 50;
 var browseFilter = 'page_view';
-var browsePageViewMode = 'summary';
 var browseSkuFilter = '';
 var browseSortField = 'created_at';
 var browseSortAsc = false;
@@ -2279,31 +2278,17 @@ function buildBrowseHourChartHtml(hoursMap) {
 function updateBrowseTableView() {
   var table = document.getElementById('browse-table');
   var skuBar = document.getElementById('browse-sku-filter-bar');
-  var modeBar = document.getElementById('browse-pageview-mode-bar');
   var detailWrap = document.getElementById('browse-detail-wrap');
   var summaryWrap = document.getElementById('browse-summary-wrap');
   var isPageView = browseFilter === 'page_view';
-  var isSummary = isPageView && browsePageViewMode === 'summary';
 
   if (table) {
     table.classList.remove('browse-view-page_view', 'browse-view-view_product');
     table.classList.add(browseFilter === 'view_product' ? 'browse-view-view_product' : 'browse-view-page_view');
   }
   if (skuBar) skuBar.classList.toggle('hidden', browseFilter !== 'view_product');
-  if (modeBar) modeBar.classList.toggle('hidden', !isPageView);
-  if (detailWrap) detailWrap.classList.toggle('hidden', isSummary);
-  if (summaryWrap) summaryWrap.classList.toggle('hidden', !isSummary);
-}
-
-function setBrowsePageViewMode(mode) {
-  browsePageViewMode = mode === 'detail' ? 'detail' : 'summary';
-  browsePage = 1;
-  var tabs = document.querySelectorAll('.browse-pageview-mode .filter-tab');
-  tabs.forEach(function (tab) {
-    tab.classList.toggle('active', tab.getAttribute('data-pageview-mode') === browsePageViewMode);
-  });
-  updateBrowseTableView();
-  renderBrowsePage();
+  if (detailWrap) detailWrap.classList.toggle('hidden', isPageView);
+  if (summaryWrap) summaryWrap.classList.toggle('hidden', !isPageView);
 }
 
 function sortBrowseLogsList(logs) {
@@ -2419,7 +2404,7 @@ function renderBrowseSummary() {
 function renderBrowsePage() {
   updateBrowseTableView();
 
-  if (browseFilter === 'page_view' && browsePageViewMode === 'summary') {
+  if (browseFilter === 'page_view') {
     renderBrowseSummary();
     return;
   }
@@ -2534,7 +2519,7 @@ function updateBrowseSortHeaders() {
 
 function changeBrowsePage(delta) {
   var totalPages;
-  if (browseFilter === 'page_view' && browsePageViewMode === 'summary') {
+  if (browseFilter === 'page_view') {
     totalPages = Math.ceil(aggregatePageViewsByDay(getFilteredBrowseLogs()).length / browseSummaryPageSize);
   } else {
     totalPages = Math.ceil(getFilteredBrowseLogs().length / browsePageSize);
