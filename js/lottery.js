@@ -24,19 +24,10 @@ function isWindowsDevice() {
 }
 
 async function fetchLotteryVisitorIp() {
-  try {
-    var ipRes = await fetch('https://myip.ipip.net/json');
-    var ipData = await ipRes.json();
-    return (ipData.data && ipData.data.ip) || '';
-  } catch (e1) {
-    try {
-      var ipRes2 = await fetch('https://api.ipify.org?format=json');
-      var ipData2 = await ipRes2.json();
-      return ipData2.ip || '';
-    } catch (e2) {
-      return '';
-    }
+  if (typeof fetchVisitorIp === 'function') {
+    return fetchVisitorIp();
   }
+  return '';
 }
 
 function formatLotteryDate(iso) {
@@ -178,10 +169,11 @@ async function loadLotteryWinnersPublic() {
     } else {
       var result = await supabaseClient
         .from('lottery_draws')
-        .select('*')
+        .select('winner_name,prize_label,prize_description,created_at')
         .eq('won', true)
         .neq('winner_name', '')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
       if (result.error) throw result.error;
       rows = result.data || [];
     }
@@ -218,13 +210,35 @@ async function checkLotteryAlreadyDrawn(sessionId) {
     }
     var result = await supabaseClient
       .from('lottery_draws')
-      .select('*')
+      .select('id,won,prize_label,prize_description,consolation_coupon,winner_name')
       .eq('session_id', sessionId)
       .maybeSingle();
     if (result.error) throw result.error;
     return result.data;
   } catch (e) {
     return null;
+  }
+}
+
+function applyExistingLotteryDraw(existing, statusMsg) {
+  if (!existing) return;
+  lotteryUserAlreadyDrawn = true;
+  updateLotteryDrawButton();
+  if (statusMsg) {
+    if (existing.won) {
+      statusMsg.textContent = '您已中奖：' + (existing.prize_label || '') + ' ' + (existing.prize_description || '');
+    } else if (existing.consolation_coupon) {
+      statusMsg.textContent = '您已获得安慰券：' + existing.consolation_coupon + (existing.winner_name ? '' : '，请登记姓名');
+    } else {
+      statusMsg.textContent = '感谢您的参与，本设备已使用过抽奖机会';
+    }
+  }
+  if (existing.won && !existing.winner_name) {
+    currentLotteryDrawId = existing.id;
+    openLotteryWinModal(existing.prize_label, existing.prize_description);
+  } else if (!existing.won && existing.consolation_coupon && !existing.winner_name) {
+    currentLotteryDrawId = existing.id;
+    openLotteryLoseModal(existing.consolation_coupon);
   }
 }
 
@@ -236,47 +250,33 @@ async function initLotterySection() {
 
   await loadLotterySettings();
 
+  if (lotteryNotEnabled) {
+    updateLotteryDrawButton();
+    if (statusMsg) statusMsg.textContent = '抽奖活动暂未开启，请稍后再试';
+    return;
+  }
+
   if (!isWindowsDevice()) {
     lotteryWindowsBlocked = true;
     updateLotteryDrawButton();
     if (statusMsg) statusMsg.textContent = '请使用 Windows 电脑打开本页面参与抽奖';
-    await loadLotteryPrizeStock();
-    await loadLotteryWinnersPublic();
+    await Promise.all([loadLotteryPrizeStock(), loadLotteryWinnersPublic()]);
     return;
   }
 
   currentLotterySessionId = getLotterySessionId();
-  currentLotteryVisitorIp = await fetchLotteryVisitorIp();
   var existing = await checkLotteryAlreadyDrawn(currentLotterySessionId);
+  applyExistingLotteryDraw(existing, statusMsg);
 
-  if (existing) {
-    lotteryUserAlreadyDrawn = true;
-    updateLotteryDrawButton();
-    if (statusMsg) {
-      if (existing.won) {
-        statusMsg.textContent = '您已中奖：' + (existing.prize_label || '') + ' ' + (existing.prize_description || '');
-      } else if (existing.consolation_coupon) {
-        statusMsg.textContent = '您已获得安慰券：' + existing.consolation_coupon + (existing.winner_name ? '' : '，请登记姓名');
-      } else {
-        statusMsg.textContent = '感谢您的参与，本设备已使用过抽奖机会';
-      }
-    }
-    if (existing.won && !existing.winner_name) {
-      currentLotteryDrawId = existing.id;
-      openLotteryWinModal(existing.prize_label, existing.prize_description);
-    } else if (!existing.won && existing.consolation_coupon && !existing.winner_name) {
-      currentLotteryDrawId = existing.id;
-      openLotteryLoseModal(existing.consolation_coupon);
-    }
-  }
+  await Promise.all([loadLotteryPrizeStock(), loadLotteryWinnersPublic()]);
 
-  await loadLotteryPrizeStock();
-  if (lotteryNotEnabled && !lotteryUserAlreadyDrawn && statusMsg) {
-    statusMsg.textContent = '抽奖活动暂未开启，请稍后再试';
-  } else if (lotteryPrizesSoldOut && !lotteryUserAlreadyDrawn && statusMsg) {
+  if (lotteryPrizesSoldOut && !lotteryUserAlreadyDrawn && statusMsg) {
     statusMsg.textContent = '奖品已全部分完，抽奖已结束';
   }
-  await loadLotteryWinnersPublic();
+
+  fetchLotteryVisitorIp().then(function (ip) {
+    currentLotteryVisitorIp = ip || '';
+  });
 }
 
 async function performLotteryDraw() {
@@ -633,8 +633,12 @@ function demoPerformLotteryDraw(ip, ua, sessionId) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  if (document.getElementById('lottery-section')) {
-    initLotterySection();
+  if (!document.getElementById('lottery-section')) return;
+  var startLottery = function () { initLotterySection(); };
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(startLottery, { timeout: 1500 });
+  } else {
+    setTimeout(startLottery, 200);
   }
 });
 

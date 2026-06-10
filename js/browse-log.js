@@ -47,20 +47,54 @@ function saveDemoBrowseLogs(logs) {
   localStorage.setItem('demo_browse_logs', JSON.stringify(logs));
 }
 
-async function fetchVisitorIp() {
+var cachedVisitorIp = '';
+var cachedVisitorIpAt = 0;
+var visitorIpFetchPromise = null;
+var VISITOR_IP_CACHE_MS = 5 * 60 * 1000;
+var VISITOR_IP_TIMEOUT_MS = 2500;
+
+async function fetchVisitorIpFromNetwork() {
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = controller ? setTimeout(function () { controller.abort(); }, VISITOR_IP_TIMEOUT_MS) : null;
   try {
-    var ipRes = await fetch('https://myip.ipip.net/json');
+    var ipRes = await fetch('https://myip.ipip.net/json', controller ? { signal: controller.signal } : undefined);
     var ipData = await ipRes.json();
-    return (ipData.data && ipData.data.ip) || '';
-  } catch (e1) {
-    try {
-      var ipRes2 = await fetch('https://api.ipify.org?format=json');
-      var ipData2 = await ipRes2.json();
-      return ipData2.ip || '';
-    } catch (e2) {
-      return '';
-    }
+    var ip = (ipData.data && ipData.data.ip) || '';
+    if (ip) return ip;
+  } catch (e1) { /* try fallback */ }
+  finally {
+    if (timer) clearTimeout(timer);
   }
+
+  controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  timer = controller ? setTimeout(function () { controller.abort(); }, VISITOR_IP_TIMEOUT_MS) : null;
+  try {
+    var ipRes2 = await fetch('https://api.ipify.org?format=json', controller ? { signal: controller.signal } : undefined);
+    var ipData2 = await ipRes2.json();
+    return ipData2.ip || '';
+  } catch (e2) {
+    return '';
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function fetchVisitorIp() {
+  if (cachedVisitorIp && (Date.now() - cachedVisitorIpAt) < VISITOR_IP_CACHE_MS) {
+    return cachedVisitorIp;
+  }
+  if (!visitorIpFetchPromise) {
+    visitorIpFetchPromise = fetchVisitorIpFromNetwork().then(function (ip) {
+      cachedVisitorIp = ip || '';
+      cachedVisitorIpAt = Date.now();
+      visitorIpFetchPromise = null;
+      return cachedVisitorIp;
+    }).catch(function () {
+      visitorIpFetchPromise = null;
+      return '';
+    });
+  }
+  return visitorIpFetchPromise;
 }
 
 /**

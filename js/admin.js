@@ -38,10 +38,7 @@ function login(password) {
     loginError.textContent = '';
     loginError.classList.remove('visible');
     checkAuth();
-    loadProductList('all');
-    loadOrderList();
-    loadBrowseLogList();
-    loadLotteryAdminList();
+    initAdminDashboard();
   } else {
     loginError.textContent = '密码错误';
     loginError.classList.add('visible');
@@ -103,15 +100,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initQuickUploadTable();
 
-  // 登录成功后加载商品列表和购买记录
+  // 登录成功后加载后台数据
   if (isLoggedIn) {
-    loadProductList('all');
-    loadOrderList();
-    loadBrowseLogList();
-    loadLotteryAdminList();
+    initAdminDashboard();
   }
 
 });
+
+var browseLogsLoaded = false;
+var lotteryDeletingIds = new Set();
+
+function initAdminDashboard() {
+  loadProductList('all');
+  loadOrderList();
+  loadLotteryAdminList();
+  initBrowseLogLazyLoad();
+}
+
+function initBrowseLogLazyLoad() {
+  var section = document.getElementById('browse-log-section');
+  if (!section || typeof IntersectionObserver === 'undefined') {
+    setTimeout(function () {
+      if (!browseLogsLoaded) {
+        browseLogsLoaded = true;
+        loadBrowseLogList();
+      }
+    }, 400);
+    return;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    if (entries[0].isIntersecting && !browseLogsLoaded) {
+      browseLogsLoaded = true;
+      loadBrowseLogList();
+      observer.disconnect();
+    }
+  }, { rootMargin: '240px' });
+  observer.observe(section);
+}
 
 // ============================================================
 // 图片处理模块（任务 6.1）
@@ -2078,7 +2103,7 @@ async function loadLotteryAdminList() {
       allLotteryDraws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
     } else {
       var pRes = await supabaseClient.from('lottery_prizes').select('*').order('sort_order', { ascending: true });
-      var dRes = await supabaseClient.from('lottery_draws').select('*');
+      var dRes = await supabaseClient.from('lottery_draws').select('*').order('created_at', { ascending: false });
       if (pRes.error) throw pRes.error;
       if (dRes.error) throw dRes.error;
       lotteryAdminPrizes = pRes.data || [];
@@ -2102,6 +2127,30 @@ async function loadLotteryAdminList() {
   }
 }
 
+async function refreshLotteryAdminPrizesOnly() {
+  if (CONFIG.DEMO_MODE) {
+    lotteryAdminPrizes = typeof getDemoLotteryPrizes === 'function' ? getDemoLotteryPrizes() : [];
+  } else {
+    var pRes = await supabaseClient.from('lottery_prizes').select('*').order('sort_order', { ascending: true });
+    if (pRes.error) throw pRes.error;
+    lotteryAdminPrizes = pRes.data || [];
+  }
+  renderLotteryPrizeConfigTable();
+}
+
+async function reloadLotteryDrawRecordsOnly() {
+  if (CONFIG.DEMO_MODE) {
+    allLotteryDraws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
+  } else {
+    var dRes = await supabaseClient.from('lottery_draws').select('*').order('created_at', { ascending: false });
+    if (dRes.error) throw dRes.error;
+    allLotteryDraws = dRes.data || [];
+  }
+  sortAllLotteryDraws();
+  renderLotteryAdminTable();
+  updateLotterySortHeaders();
+}
+
 async function removeLotteryDrawRecord(drawId) {
   if (CONFIG.DEMO_MODE) {
     var draws = typeof getDemoLotteryDraws === 'function' ? getDemoLotteryDraws() : [];
@@ -2123,17 +2172,52 @@ async function removeLotteryDrawRecord(drawId) {
   return !result.error;
 }
 
+async function removeLotteryDrawRecordsBatch(drawIds) {
+  if (!drawIds.length) return { ok: 0, fail: 0 };
+  if (CONFIG.DEMO_MODE) {
+    var okCount = 0;
+    for (var i = 0; i < drawIds.length; i++) {
+      if (await removeLotteryDrawRecord(drawIds[i])) okCount++;
+    }
+    return { ok: okCount, fail: drawIds.length - okCount };
+  }
+  var result = await supabaseClient.rpc('delete_lottery_draws_batch', { p_draw_ids: drawIds });
+  if (result.error) return { ok: 0, fail: drawIds.length };
+  var ok = Number(result.data) || 0;
+  return { ok: ok, fail: drawIds.length - ok };
+}
+
 async function deleteLotteryDraw(drawId) {
   if (!confirm('确定要删除该抽奖记录吗？删除后该设备可重新抽奖。')) return;
+  if (lotteryDeletingIds.has(drawId)) return;
+
+  var prevDraws = allLotteryDraws.slice();
+  var removed = prevDraws.find(function (d) { return d.id === drawId; });
+  lotteryDeletingIds.add(drawId);
+  allLotteryDraws = allLotteryDraws.filter(function (d) { return d.id !== drawId; });
+  selectedLotteryDrawIds.delete(drawId);
+  renderLotteryAdminTable();
+  updateLotteryBatchToolbar();
 
   try {
-    if (await removeLotteryDrawRecord(drawId)) {
-      loadLotteryAdminList();
-    } else {
+    var ok = await removeLotteryDrawRecord(drawId);
+    if (!ok) {
+      allLotteryDraws = prevDraws;
+      renderLotteryAdminTable();
+      updateLotteryBatchToolbar();
       alert('删除失败，请重试');
+      return;
+    }
+    if (removed && removed.won) {
+      await refreshLotteryAdminPrizesOnly();
     }
   } catch (err) {
+    allLotteryDraws = prevDraws;
+    renderLotteryAdminTable();
+    updateLotteryBatchToolbar();
     alert('删除失败，请重试');
+  } finally {
+    lotteryDeletingIds.delete(drawId);
   }
 }
 
@@ -2147,18 +2231,29 @@ async function deleteSelectedLotteryDraws() {
     return;
   }
 
-  var failCount = 0;
+  var prevDraws = allLotteryDraws.slice();
+  var hadWinner = prevDraws.some(function (d) {
+    return ids.indexOf(d.id) !== -1 && d.won;
+  });
+  allLotteryDraws = allLotteryDraws.filter(function (d) { return ids.indexOf(d.id) === -1; });
+  selectedLotteryDrawIds.clear();
+  renderLotteryAdminTable();
+  updateLotteryBatchToolbar();
+
   try {
-    for (var i = 0; i < ids.length; i++) {
-      var ok = await removeLotteryDrawRecord(ids[i]);
-      if (!ok) failCount++;
+    var result = await removeLotteryDrawRecordsBatch(ids);
+    if (result.fail > 0) {
+      await reloadLotteryDrawRecordsOnly();
+      alert('有 ' + result.fail + ' 条记录删除失败，列表已刷新');
+      return;
     }
-    selectedLotteryDrawIds.clear();
-    loadLotteryAdminList();
-    if (failCount > 0) {
-      alert('有 ' + failCount + ' 条记录删除失败，请重试');
+    if (hadWinner) {
+      await refreshLotteryAdminPrizesOnly();
     }
   } catch (err) {
+    allLotteryDraws = prevDraws;
+    renderLotteryAdminTable();
+    updateLotteryBatchToolbar();
     alert('批量删除失败，请重试');
   }
 }
