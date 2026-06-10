@@ -1864,6 +1864,7 @@ var lotteryAdminEnabled = true;
 var selectedLotteryDrawIds = new Set();
 var lotterySortField = 'created_at';
 var lotterySortAsc = false;
+var LOTTERY_CONSOLATION_SORT_ORDER = 9;
 
 function escapeLotteryConfigAttr(value) {
   return String(value == null ? '' : value)
@@ -2048,9 +2049,40 @@ async function deleteLotteryPrizeConfigRow(tier) {
   renderLotteryPrizeConfigTable();
 }
 
+function buildLotteryPrizeSortMap() {
+  var map = { tiers: {}, labels: {} };
+  (lotteryAdminPrizes || []).forEach(function (p) {
+    var order = Number(p.sort_order);
+    if (isNaN(order)) order = 0;
+    if (p.tier) map.tiers[p.tier] = order;
+    if (p.label) map.labels[String(p.label).toLowerCase()] = order;
+  });
+  return map;
+}
+
+function getLotteryDrawAwardSortOrder(draw, sortMap) {
+  if (draw.won) {
+    if (draw.prize_tier && sortMap.tiers[draw.prize_tier] != null) {
+      return sortMap.tiers[draw.prize_tier];
+    }
+    if (draw.prize_label) {
+      var labelKey = String(draw.prize_label).toLowerCase();
+      if (sortMap.labels[labelKey] != null) {
+        return sortMap.labels[labelKey];
+      }
+    }
+    return 9998;
+  }
+  if (draw.consolation_coupon) {
+    return LOTTERY_CONSOLATION_SORT_ORDER;
+  }
+  return 9999;
+}
+
 function sortAllLotteryDraws() {
   var field = lotterySortField;
   var asc = lotterySortAsc;
+  var prizeSortMap = field === 'prize_label' ? buildLotteryPrizeSortMap() : null;
   allLotteryDraws.sort(function (a, b) {
     var va;
     var vb;
@@ -2060,12 +2092,20 @@ function sortAllLotteryDraws() {
     } else if (field === 'won') {
       va = a.won ? 1 : 0;
       vb = b.won ? 1 : 0;
+    } else if (field === 'prize_label') {
+      va = getLotteryDrawAwardSortOrder(a, prizeSortMap);
+      vb = getLotteryDrawAwardSortOrder(b, prizeSortMap);
     } else {
       va = (a[field] == null ? '' : String(a[field])).toLowerCase();
       vb = (b[field] == null ? '' : String(b[field])).toLowerCase();
     }
     if (va < vb) return asc ? -1 : 1;
     if (va > vb) return asc ? 1 : -1;
+    if (field === 'prize_label') {
+      var ta = new Date(a.created_at).getTime();
+      var tb = new Date(b.created_at).getTime();
+      return tb - ta;
+    }
     return 0;
   });
 }
@@ -2075,7 +2115,7 @@ function sortLotteryDrawsBy(field) {
     lotterySortAsc = !lotterySortAsc;
   } else {
     lotterySortField = field;
-    lotterySortAsc = field === 'created_at' ? false : true;
+    lotterySortAsc = field !== 'created_at';
   }
   sortAllLotteryDraws();
   renderLotteryAdminTable();
